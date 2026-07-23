@@ -2454,7 +2454,7 @@ function toGeminiParts(contentBlocks){
     return [{ text: contentBlocks }];
   }
   return contentBlocks.map(function(block){
-    if(block.type === 'image'){
+    if(block.type === 'image' || block.type === 'audio'){
       return { inline_data: { mime_type: block.source.media_type, data: block.source.data } };
     }
     return { text: block.text };
@@ -2511,16 +2511,17 @@ function extractText(data){
   return content.parts.map(function(p){ return p.text || ''; }).join('');
 }
 
-function classify(content, images){
-  var systemPrompt = 'You are the filing assistant for a personal "second brain" note system with folders that can be nested (folders inside folders). Given the existing folders below and one new captured entry (text, and possibly an image), decide which folder(s) it belongs in.\n\n' +
+function classify(content, images, audio){
+  var systemPrompt = 'You are the filing assistant for a personal "second brain" note system with folders that can be nested (folders inside folders). Given the existing folders below and one new captured entry (text, and possibly an image or an attached audio recording), decide which folder(s) it belongs in.\n\n' +
 'Existing folders (name, full path, description):\n' + flattenForPrompt() + '\n\n' +
 'Today\'s date is ' + todayISO() + ' (YYYY-MM-DD).\n\n' +
 'Rules:\n' +
-'- First check whether the entry actually contains MULTIPLE separate thoughts or items — e.g. a shopping list ("milk, eggs, bread"), several unrelated ideas typed in one go, or a numbered/bulleted list. If so, split it into one array entry PER item, each filed independently. If it\'s genuinely one single thought, return an array with exactly one entry.\n' +
+(audio ? '- An audio recording is attached. Listen to it and base the entry/entries on what is actually said in the recording — ignore any literal placeholder text like "Voice memo" if it appears below, that is not real content. Transcribe the key point(s) into short, clean, natural note text exactly as described below, not a verbatim transcript.\n' : '') +
+'- First check whether the entry actually contains MULTIPLE separate thoughts or items — e.g. a shopping list ("milk, eggs, bread"), several unrelated ideas typed or spoken in one go, or a numbered/bulleted list. If so, split it into one array entry PER item, each filed independently. If it\'s genuinely one single thought, return an array with exactly one entry.\n' +
 '- Never split a single idea that just happens to be a full sentence — only split when there are clearly distinct, separable items.\n' +
 '- For each entry: "text" is that one item rewritten as a short, clean, natural standalone note — strip filler verbs and instructions down to the actual thing. "buy laptop" becomes "Laptop", "remind me to call mom" becomes "Call mom", "need to fix the bike" becomes "Fix the bike", "we need milk and eggs" becomes two entries "Milk" and "Eggs". Keep it minimal and natural, the way a person would jot it on a list, not a transcript of what they said.\n' +
 '- "description": if the person included extra detail beyond the core item — a price, a brand, a size, a parenthetical note, a reason, a specific quantity, or any other clarifying context — pull that OUT of "text" and put it here instead, rewritten as a short natural phrase. Example: "Buy running shoes (500 PLN)" -> text: "Running shoes", description: "500 PLN". Example: "call the dentist, ask about the invoice from March" -> text: "Call the dentist", description: "Ask about the invoice from March". If there is no extra detail beyond the core item, return "description" as an empty string. Never duplicate in description something that is already fully captured by dueDate or priority alone.\n' +
-'- IMPORTANT: always write "text", "description", "reasoning", and "newFolderDescription" in English, no matter what language the person wrote in. If they wrote in Polish (or any other language), translate the meaning into natural English — never leave the original-language text in the output.\n' +
+'- IMPORTANT: always write "text", "description", "reasoning", and "newFolderDescription" in English, no matter what language the person wrote or spoke in. If they wrote or said it in Polish (or any other language), translate the meaning into natural English — never leave the original-language text in the output.\n' +
 '- If an existing folder (top-level or nested) clearly fits an entry, use its exact name and set isNew to false.\n' +
 '- If nothing fits well for an entry, propose ONE new top-level folder with a short, plain English name and a one-sentence English description of what belongs there, and set isNew to true. Two entries needing the same new folder should use the identical folder name.\n' +
 '- Folders marked [task list] are for to-do or to-buy style items with a priority and due date — route clear tasks or purchases there.\n' +
@@ -2533,6 +2534,10 @@ function classify(content, images){
   (images||[]).forEach(function(img){
     contentBlocks.push({ type:'image', source:{ type:'base64', media_type: img.mediaType, data: img.base64 } });
   });
+  if(audio){
+    var audioBase64 = audio.base64 || (audio.dataUrl ? audio.dataUrl.split(',')[1] : null);
+    if(audioBase64) contentBlocks.push({ type:'audio', source:{ type:'base64', media_type: audio.mime, data: audioBase64 } });
+  }
   contentBlocks.push({ type:'text', text: content });
 
   return callGemini(systemPrompt, contentBlocks, 1200).then(function(data){
@@ -3224,6 +3229,7 @@ function renderCaptureBox(){
   html += '<div class="sb-capture-row">';
   html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
   html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
+  html += '<input type="file" id="audioFileInput" accept="audio/*" style="display:none;">';
   html += '<span class="sb-spacer"></span>';
   html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">' + micIconSvg(18) + '</button>';
   html += '<button class="sb-btn-cta" id="btnFile">File</button>';
@@ -3266,11 +3272,13 @@ function wireCaptureEvents(){
     });
   }
   var fileInput = document.getElementById('imageFileInput');
+  var audioFileInput = document.getElementById('audioFileInput');
   var capturePlusBtn = document.getElementById('btnCapturePlus');
   if(capturePlusBtn) capturePlusBtn.addEventListener('click', function(){
     openFloatingMenu(capturePlusBtn, 'floatingCaptureMenu', [
       { label: '🔗 Add link', action:'link' },
-      { label: '🖼 Add image', action:'image' }
+      { label: '🖼 Add image', action:'image' },
+      { label: '🎵 Add voice memo', action:'audio' }
     ], function(action){
       if(action === 'link'){
         captureDraft.linkMode = !captureDraft.linkMode;
@@ -3279,8 +3287,21 @@ function wireCaptureEvents(){
         if(captureDraft.linkMode){ var li = document.getElementById('linkUrlInput'); if(li) li.focus(); }
       } else if(action === 'image'){
         fileInput.click();
+      } else if(action === 'audio'){
+        audioFileInput.click();
       }
     });
+  });
+  if(audioFileInput) audioFileInput.addEventListener('change', function(){
+    var file = audioFileInput.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      state.pendingVoiceNote = { dataUrl: reader.result, mime: file.type, uploaded: true };
+      audioFileInput.value = '';
+      renderMain();
+    };
+    reader.readAsDataURL(file);
   });
   if(fileInput) fileInput.addEventListener('change', function(){
     var files = Array.prototype.slice.call(fileInput.files);
@@ -3427,7 +3448,7 @@ function handleFileClick(){
   if(btn){ btn.disabled = true; btn.textContent = 'Filing…'; }
   showCaptureError('');
 
-  classify(fullText, state.pendingImages).then(function(items){
+  classify(fullText, state.pendingImages, state.pendingVoiceNote).then(function(items){
     state.pendingReview = items.map(function(item, idx){
       var existing = findFolderByName(item.folder);
       var dup = findPossibleDuplicate(item.text);
