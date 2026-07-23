@@ -153,6 +153,7 @@ a{ color:var(--accent); }
   display:flex; align-items:center; gap:10px; flex-shrink:0;
   font-size:var(--fs-xl); font-weight:700;
 }
+.sb-header-brand-accent{ color:var(--accent); }
 .sb-header-search{ flex:0 1 480px; min-width:140px; margin-bottom:0 !important; }
 .sb-header-right{ display:flex; align-items:center; gap:8px; margin-left:auto; flex-shrink:0; }
 .sb-profile-chip{
@@ -2657,7 +2658,7 @@ function renderTopHeader(){
     + '<circle cx="52" cy="76" r="6" fill="var(--text-secondary)"/>'
     + '<circle cx="80" cy="86" r="6" fill="var(--text-secondary)"/>'
     + '<circle cx="60" cy="90" r="6" fill="var(--text-secondary)"/>'
-    + '</svg><span class="sb-header-brand-label">Second Brain</span></div>';
+    + '</svg><span class="sb-header-brand-label">Second <span class="sb-header-brand-accent">Brain</span></span></div>';
 
   html += '<div class="sb-search-wrap sb-header-search">';
   html += '<span class="sb-search-ico">🔍</span>';
