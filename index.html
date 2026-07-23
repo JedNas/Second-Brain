@@ -357,10 +357,21 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 /* ---------- Search ---------- */
 .sb-topbar{ display:flex; align-items:center; gap:10px; margin-bottom:20px; }
 .sb-topbar .sb-search-wrap{ position:relative; margin-bottom:0; flex:1; min-width:0; }
-.sb-topbar-btn{
-  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+.sb-profile-chip{
+  display:flex; align-items:center; gap:9px; flex-shrink:0;
   border:1px solid var(--separator); background:var(--bg-elevated); box-shadow:var(--shadow-sm);
+  border-radius:999px; padding:6px 14px 6px 6px; cursor:pointer;
 }
+.sb-profile-chip:hover{ background:var(--overlay-1); }
+.sb-profile-avatar{
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg, var(--accent) 0%, #8B6BF2 100%); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700;
+}
+.sb-profile-text{ display:flex; flex-direction:column; align-items:flex-start; line-height:1.2; }
+.sb-profile-name{ font-size:var(--fs-sm); font-weight:600; color:var(--text); }
+.sb-profile-sub{ font-size:var(--fs-2xs); color:var(--text-tertiary); }
+.sb-profile-chevron{ color:var(--text-tertiary); font-size:12px; margin-left:2px; }
 .sb-search-wrap{ position:relative; margin-bottom:20px; }
 .sb-search{
   width:100%; border:1px solid var(--separator); background:var(--bg-elevated);
@@ -598,6 +609,8 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
   .sb-page-actions button{ padding:9px 14px; font-size:var(--fs-sm); }
   .sb-chip{ padding:9px 14px; font-size:var(--fs-sm); }
   .sb-priority-chip{ padding:9px 14px; }
+  .sb-profile-chip{ padding:6px; }
+  .sb-profile-text, .sb-profile-chevron{ display:none; }
   .sb-sidebar{
     position:sticky; top:0; width:100%; height:auto; flex-direction:row; align-items:center;
     overflow-x:auto; padding:10px 12px; z-index:40;
@@ -914,7 +927,7 @@ function defaultState(){
     pendingVoiceNote: null,
     taskSortOrder: 'default',
     lastModifiedAt: 0,
-    settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'' }
+    settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
   };
 }
 
@@ -2622,16 +2635,28 @@ function flashNote(noteId){
 /* ============================================================
    SEARCH
    ============================================================ */
+function getInitials(name){
+  name = (name || '').trim();
+  if(!name) return '?';
+  var parts = name.split(/\s+/).slice(0,2);
+  return parts.map(function(p){ return p.charAt(0).toUpperCase(); }).join('');
+}
+
 function renderSearchBox(){
-  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var p = state.settings;
   var html = '<div class="sb-topbar">';
   html += '<div class="sb-search-wrap">';
   html += '<span class="sb-search-ico">🔍</span>';
   html += '<input type="text" class="sb-search" id="searchInput" placeholder="Search your second brain…" value="' + escapeHtml(searchDraft) + '">';
   html += '<div id="searchResults"></div>';
   html += '</div>';
-  html += '<button class="sb-icon-btn sb-topbar-btn" id="btnQuickTheme" title="Toggle theme">' + (isDark ? '☀' : '🌙') + '</button>';
-  html += '<button class="sb-icon-btn sb-topbar-btn" id="btnSettingsTop" title="Settings">⚙</button>';
+  html += '<button class="sb-profile-chip" id="btnProfileMenu">';
+  html += '<span class="sb-profile-avatar">' + escapeHtml(getInitials(p.profileName)) + '</span>';
+  html += '<span class="sb-profile-text"><span class="sb-profile-name">' + escapeHtml(p.profileName || 'You') + '</span>';
+  if(p.profileSubtitle) html += '<span class="sb-profile-sub">' + escapeHtml(p.profileSubtitle) + '</span>';
+  html += '</span>';
+  html += '<span class="sb-profile-chevron">⌄</span>';
+  html += '</button>';
   html += '</div>';
   return html;
 }
@@ -2690,10 +2715,19 @@ function wireSearchEvents(){
 }
 
 function wireTopbarEvents(){
-  var themeBtn = document.getElementById('btnQuickTheme');
-  if(themeBtn) themeBtn.addEventListener('click', quickToggleTheme);
-  var settingsBtn = document.getElementById('btnSettingsTop');
-  if(settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
+  var profileBtn = document.getElementById('btnProfileMenu');
+  if(profileBtn){
+    profileBtn.addEventListener('click', function(){
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      openFloatingMenu(profileBtn, 'floatingProfileMenu', [
+        { label: (isDark ? '☀ Light mode' : '🌙 Dark mode'), action:'toggleTheme' },
+        { label: '⚙ Settings', action:'settings' }
+      ], function(action){
+        if(action === 'toggleTheme') quickToggleTheme();
+        else if(action === 'settings') openSettingsModal();
+      });
+    });
+  }
 }
 
 function instantSearch(q){
@@ -3479,6 +3513,7 @@ function closeAllFloatingMenus(){
   closeFloatingMenu('floatingNoteMenu');
   closeFloatingMenu('floatingFolderMenu');
   closeFloatingMenu('floatingEmptyAreaMenu');
+  closeFloatingMenu('floatingProfileMenu');
 }
 
 /* ---------- Note context menu (floating, opens on right-click or ⋯ button) ---------- */
@@ -3917,6 +3952,10 @@ function openSettingsModal(){
   var s = state.settings;
   var html = '<h2>Settings</h2>';
 
+  html += '<div class="sb-field"><label>Profile name</label><input type="text" id="profileNameInput" placeholder="Your name" value="' + escapeHtml(s.profileName || '') + '" style="margin-bottom:8px;"></div>';
+  html += '<div class="sb-field"><label>Profile subtitle (optional)</label><input type="text" id="profileSubtitleInput" placeholder="e.g. a short tagline" value="' + escapeHtml(s.profileSubtitle || '') + '"></div>';
+  html += '<div class="sb-sep"></div>';
+
   html += '<div class="sb-field"><label>Gemini API Key (for AI features)</label>';
   html += '<p style="font-size:var(--fs-xs);color:var(--text-secondary);margin-bottom:8px;">Free, no credit card needed. Get one at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent);">aistudio.google.com/apikey</a>.</p>';
   html += '<input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key…" value="' + escapeHtml(s.geminiApiKey || '') + '">';
@@ -3968,6 +4007,16 @@ function openSettingsModal(){
     saveState();
   });
 
+  el.querySelector('#profileNameInput').addEventListener('change', function(e){
+    state.settings.profileName = e.target.value.trim();
+    saveState();
+    renderMain();
+  });
+  el.querySelector('#profileSubtitleInput').addEventListener('change', function(e){
+    state.settings.profileSubtitle = e.target.value.trim();
+    saveState();
+    renderMain();
+  });
 
   el.querySelector('#geminiApiKey').addEventListener('change', function(e){
     state.settings.geminiApiKey = e.target.value.trim();
