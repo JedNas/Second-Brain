@@ -441,6 +441,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 /* ---------- Section blocks ---------- */
 .sb-section{ margin:22px 0; }
 .sb-section-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.sb-home-more-hint{ text-align:center; color:var(--text-tertiary); font-size:var(--fs-xs); padding:14px 0 4px; }
 .sb-section-head h3{ font-size:var(--fs-base); color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
 
 /* ---------- Folder tiles (subfolder list) ---------- */
@@ -2942,35 +2943,18 @@ function renderHomeView(){
 
   html += renderBrainChat();
 
-  var onThisDay = getOnThisDay();
-  if(onThisDay.length){
-    html += '<div class="sb-section"><div class="sb-section-head"><h3>On this day</h3></div><div class="sb-note-list">';
-    onThisDay.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
-    html += '</div></div>';
-  }
-
-  var upcoming = getUpcoming();
-  if(upcoming.length){
-    html += '<div class="sb-section"><div class="sb-section-head"><h3>Upcoming</h3></div><div class="sb-note-list">';
-    upcoming.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
-    html += '</div></div>';
-  }
-
-  var pinned = all.filter(function(item){ return item.note.pinned; });
-  if(pinned.length){
-    html += '<div class="sb-section"><div class="sb-section-head"><h3>📌 Pinned</h3></div><div class="sb-note-list">';
-    pinned.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
-    html += '</div></div>';
-  }
-
-  html += '<div class="sb-section"><div class="sb-section-head"><h3>All notes</h3></div>';
+  var RECENT_LIMIT = 10;
   var rest = all.slice().sort(function(a,b){ return b.note.createdAt - a.note.createdAt; });
+  html += '<div class="sb-section"><div class="sb-section-head"><h3>Recent notes</h3></div>';
   if(!rest.length){
     html += emptyState('🧠','Nothing here yet','Capture your first thought above.');
   } else {
     html += '<div class="sb-note-list">';
-    rest.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+    rest.slice(0, RECENT_LIMIT).forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
     html += '</div>';
+    if(rest.length > RECENT_LIMIT){
+      html += '<div class="sb-home-more-hint">Showing the ' + RECENT_LIMIT + ' most recent notes. Use search or your folders to find older ones.</div>';
+    }
   }
   html += '</div>';
 
