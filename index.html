@@ -588,6 +588,56 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-goal-text{ flex:1; font-size:var(--fs-sm); }
 .sb-goal-delete{ border:none; background:none; color:var(--text-tertiary); font-size:13px; }
 .sb-goal-delete:hover{ color:var(--danger); }
+
+/* ---------- Calendar ---------- */
+.sb-cal-nav{ display:flex; align-items:center; gap:8px; margin:16px 0; }
+.sb-cal-nav-label{ font-weight:700; font-size:var(--fs-md); margin-left:6px; }
+.sb-cal-layout{ display:flex; gap:16px; align-items:flex-start; }
+.sb-cal-unsched{
+  width:220px; flex-shrink:0; background:var(--bg-elevated); border:1px solid var(--separator);
+  border-radius:var(--radius-lg); padding:14px; box-shadow:var(--shadow-sm);
+}
+.sb-cal-unsched h4{ font-size:var(--fs-sm); color:var(--text-secondary); margin-bottom:10px; }
+.sb-cal-unsched-item{
+  background:var(--overlay-1); border:1px solid var(--separator); border-radius:10px;
+  padding:8px 10px; font-size:var(--fs-xs); margin-bottom:6px; cursor:grab;
+}
+.sb-cal-unsched-item:hover{ background:var(--accent-soft); border-color:var(--accent); }
+.sb-cal-unsched-empty{ font-size:var(--fs-xs); color:var(--text-tertiary); padding:8px 0; }
+.sb-cal-new-block-hint{ font-size:9px; color:var(--text-tertiary); margin-top:10px; line-height:1.4; }
+
+.sb-cal-grid-wrap{ flex:1; min-width:0; overflow-x:auto; }
+.sb-cal-week-grid{ display:flex; gap:6px; }
+.sb-cal-daycol{ flex:1; min-width:110px; }
+.sb-cal-daycol.wide{ min-width:100%; }
+.sb-cal-daycol-head{
+  text-align:center; font-size:var(--fs-xs); font-weight:700; color:var(--text-secondary);
+  padding:6px 0; border-bottom:2px solid var(--separator);
+}
+.sb-cal-daycol-head.today{ color:var(--accent); border-color:var(--accent); }
+.sb-cal-daycol-body{
+  position:relative; border-left:1px solid var(--separator); background:var(--bg-elevated);
+}
+.sb-cal-hourline{
+  position:absolute; left:0; right:0; border-top:1px solid var(--separator); height:1px;
+}
+.sb-cal-hourline span{
+  position:absolute; top:-8px; left:4px; font-size:9px; color:var(--text-tertiary); background:var(--bg-elevated); padding:0 3px;
+}
+.sb-cal-block{
+  position:absolute; left:4px; right:4px; background:var(--accent-soft); border:1px solid var(--accent);
+  border-radius:8px; padding:4px 22px 4px 8px; overflow:hidden; cursor:grab; z-index:5;
+}
+.sb-cal-block-title{ font-size:var(--fs-2xs); font-weight:700; color:var(--accent); line-height:1.2; }
+.sb-cal-block-time{ font-size:9px; color:var(--accent); opacity:0.8; }
+.sb-cal-block-delete{
+  position:absolute; top:2px; right:4px; border:none; background:none; color:var(--accent);
+  font-size:10px; opacity:0.7;
+}
+.sb-cal-block-delete:hover{ opacity:1; color:var(--danger); }
+.sb-cal-resize-handle{
+  position:absolute; left:0; right:0; bottom:0; height:6px; cursor:ns-resize;
+}
 .sb-badge-due.overdue{ background:var(--danger-soft); color:var(--danger); font-weight:600; }
 .sb-note-actions{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
 .sb-note-menu-btn{ width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); }
@@ -1037,6 +1087,9 @@ function defaultState(){
     pendingVoiceNote: null,
     taskSortOrder: 'default',
     goals: [],
+    calendarBlocks: [],
+    calendarView: 'day',
+    calendarDate: todayISO(),
     horizonsScale: 'week',
     lastModifiedAt: 0,
     settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
@@ -1168,7 +1221,7 @@ function pullRemoteState(){
         // Keep the local copy and push it up instead of letting stale cloud data win.
         return remoteSyncSet({
           folders: state.folders, trash: state.trash, settings: state.settings,
-          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, lastModifiedAt: localModifiedAt
+          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, lastModifiedAt: localModifiedAt
         }).catch(function(){});
       }
       remote.pendingImages = [];
@@ -1185,7 +1238,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, lastModifiedAt: state.lastModifiedAt
+        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1248,6 +1301,7 @@ function saveLocalSettingsOnly(){
     digest: state.digest,
     taskSortOrder: state.taskSortOrder,
     goals: state.goals,
+    calendarBlocks: state.calendarBlocks,
     lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
@@ -1262,6 +1316,7 @@ function saveState(){
     digest: state.digest,
     taskSortOrder: state.taskSortOrder,
     goals: state.goals,
+    calendarBlocks: state.calendarBlocks,
     lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
@@ -1566,6 +1621,47 @@ function toggleGoalDone(goalId){
 function deleteGoal(goalId){
   state.goals = state.goals.filter(function(x){ return x.id !== goalId; });
   saveState();
+}
+
+/* ============================================================
+   CALENDAR (time-blocking, TimeStripe-style)
+   ============================================================ */
+var CAL_HOUR_START = 6;
+var CAL_HOUR_END = 22;
+var CAL_HOUR_HEIGHT = 48;
+var CAL_MIN_PX = CAL_HOUR_HEIGHT / 60;
+
+function createCalendarBlock(opts){
+  return {
+    id: makeId('cb'),
+    title: opts.title || 'Untitled',
+    date: opts.date,
+    startMinutes: opts.startMinutes,
+    duration: opts.duration || 60,
+    linkedFolderId: opts.linkedFolderId || null,
+    linkedNoteId: opts.linkedNoteId || null
+  };
+}
+function getBlocksForDate(date){
+  return state.calendarBlocks.filter(function(b){ return b.date === date; });
+}
+function deleteCalendarBlock(id){
+  state.calendarBlocks = state.calendarBlocks.filter(function(b){ return b.id !== id; });
+  saveState();
+}
+function snapMinutes(min){
+  return Math.round(min / 15) * 15;
+}
+function getUnscheduledTasks(){
+  var scheduledNoteIds = {};
+  state.calendarBlocks.forEach(function(b){ if(b.linkedNoteId) scheduledNoteIds[b.linkedNoteId] = true; });
+  return getAllTasks().filter(function(item){ return !item.note.done && !scheduledNoteIds[item.note.id]; });
+}
+function minutesToLabel(min){
+  var h = Math.floor(min/60), m = min%60;
+  var ampm = h < 12 ? 'AM' : 'PM';
+  var h12 = h % 12; if(h12 === 0) h12 = 12;
+  return h12 + (m ? ':' + (m<10?'0'+m:m) : '') + ampm;
 }
 
 function computeTaskBuckets(){
@@ -2031,6 +2127,7 @@ function renderSidebar(){
   html += navItem('home','🏠','Home');
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
   html += navItem('horizons','🧭','Horizons');
+  html += navItem('calendar','📅','Calendar');
   html += navItem('themes','🏷️','Themes');
   html += navItem('digest','✨','Review');
   html += navItem('trash','🗑','Trash');
@@ -2269,6 +2366,7 @@ function renderMain(){
     case 'folder': html += renderFolderView(); break;
     case 'tasks': html += renderTasksView(); break;
     case 'horizons': html += renderHorizonsView(); break;
+    case 'calendar': html += renderCalendarView(); break;
     case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
     case 'digest': html += renderDigestView(); break;
@@ -3341,6 +3439,259 @@ var HORIZON_SCALES = [
   { key:'year', label:'Year' }
 ];
 
+/* ============================================================
+   VIEW: CALENDAR (time-blocking)
+   ============================================================ */
+function isoToDate(iso){
+  var p = iso.split('-').map(Number);
+  return new Date(p[0], p[1]-1, p[2]);
+}
+function addDaysIso(iso, n){
+  var d = isoToDate(iso);
+  d.setDate(d.getDate() + n);
+  return todayISO(d);
+}
+function getWeekStart(iso){
+  var d = isoToDate(iso);
+  var day = d.getDay();
+  var diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  return todayISO(d);
+}
+function calendarLabel(date, view){
+  var d = isoToDate(date);
+  if(view === 'day'){
+    return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  }
+  var start = getWeekStart(date);
+  var end = addDaysIso(start, 6);
+  var sD = isoToDate(start), eD = isoToDate(end);
+  return sD.toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ' – ' + eD.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function renderCalendarView(){
+  var view = state.calendarView || 'day';
+  var date = state.calendarDate || todayISO();
+
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">📅 Calendar</div></div>';
+  html += '<div class="sb-page-actions">';
+  html += '<button class="sb-horizon-tab' + (view==='day'?' active':'') + '" data-cal-view="day">Day</button>';
+  html += '<button class="sb-horizon-tab' + (view==='week'?' active':'') + '" data-cal-view="week">Week</button>';
+  html += '</div></div>';
+
+  html += '<div class="sb-cal-nav">';
+  html += '<button class="sb-icon-btn" data-cal-nav="prev">‹</button>';
+  html += '<button class="sb-btn-text" data-cal-nav="today">Today</button>';
+  html += '<button class="sb-icon-btn" data-cal-nav="next">›</button>';
+  html += '<span class="sb-cal-nav-label">' + calendarLabel(date, view) + '</span>';
+  html += '</div>';
+
+  html += '<div class="sb-cal-layout">';
+  html += renderUnscheduledPanel();
+  html += '<div class="sb-cal-grid-wrap">';
+  if(view === 'day'){
+    html += renderCalendarDayColumn(date, true);
+  } else {
+    var monday = getWeekStart(date);
+    html += '<div class="sb-cal-week-grid">';
+    for(var i=0; i<7; i++){ html += renderCalendarDayColumn(addDaysIso(monday, i), false); }
+    html += '</div>';
+  }
+  html += '</div>';
+  html += '</div>';
+
+  return html;
+}
+
+function renderUnscheduledPanel(){
+  var tasks = getUnscheduledTasks();
+  var html = '<div class="sb-cal-unsched"><h4>Unscheduled tasks</h4>';
+  if(!tasks.length){
+    html += '<div class="sb-cal-unsched-empty">Nothing to schedule 🎉</div>';
+  } else {
+    tasks.forEach(function(item){
+      html += '<div class="sb-cal-unsched-item" draggable="true" data-cal-task-note="' + item.note.id + '" data-cal-task-folder="' + item.folder.id + '">' + escapeHtml(item.note.content) + '</div>';
+    });
+  }
+  html += '<div class="sb-cal-new-block-hint">Drag a task onto the calendar, or click an empty slot to add a custom block.</div>';
+  html += '</div>';
+  return html;
+}
+
+function renderCalendarDayColumn(date, wide){
+  var blocks = getBlocksForDate(date);
+  var totalMinutes = (CAL_HOUR_END - CAL_HOUR_START) * 60;
+  var totalHeight = totalMinutes * CAL_MIN_PX;
+  var dObj = isoToDate(date);
+  var isToday = date === todayISO();
+  var dayLabel = dObj.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+
+  var html = '<div class="sb-cal-daycol' + (wide?' wide':'') + '">';
+  html += '<div class="sb-cal-daycol-head' + (isToday?' today':'') + '">' + dayLabel + '</div>';
+  html += '<div class="sb-cal-daycol-body" data-cal-date-body="' + date + '" style="height:' + totalHeight + 'px;">';
+
+  for(var h=CAL_HOUR_START; h<=CAL_HOUR_END; h++){
+    var top = (h - CAL_HOUR_START) * 60 * CAL_MIN_PX;
+    html += '<div class="sb-cal-hourline" style="top:' + top + 'px;"><span>' + minutesToLabel(h*60) + '</span></div>';
+  }
+
+  blocks.forEach(function(b){
+    var top = (b.startMinutes - CAL_HOUR_START*60) * CAL_MIN_PX;
+    var height = Math.max(b.duration * CAL_MIN_PX, CAL_HOUR_HEIGHT/4);
+    html += '<div class="sb-cal-block" data-cal-block-id="' + b.id + '" style="top:' + top + 'px;height:' + height + 'px;">';
+    html += '<button class="sb-cal-block-delete" data-cal-block-delete="' + b.id + '">✕</button>';
+    html += '<div class="sb-cal-block-title">' + escapeHtml(b.title) + '</div>';
+    html += '<div class="sb-cal-block-time">' + minutesToLabel(b.startMinutes) + '</div>';
+    html += '<div class="sb-cal-resize-handle" data-cal-resize="' + b.id + '"></div>';
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function openNewBlockModal(date, startMinutes){
+  var el = openModal(
+    '<h2>New block</h2>' +
+    '<div class="sb-field"><label>Title</label><input type="text" id="newBlockTitle" placeholder="What are you doing?"></div>' +
+    '<div class="sb-field"><label>Start time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + '</div></div>' +
+    '<div class="sb-field"><label>Duration</label><select id="newBlockDuration" class="sb-select" style="width:100%;">' +
+      '<option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option>' +
+      '<option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option>' +
+    '</select></div>' +
+    '<div class="sb-modal-foot"><button class="sb-btn-text" id="newBlockCancel">Cancel</button><button class="sb-btn-cta" id="newBlockSave">Add block</button></div>'
+  );
+  var titleInput = el.querySelector('#newBlockTitle');
+  titleInput.focus();
+  el.querySelector('#newBlockCancel').addEventListener('click', closeModal);
+  el.querySelector('#newBlockSave').addEventListener('click', function(){
+    var title = titleInput.value.trim();
+    if(!title) return;
+    var duration = parseInt(el.querySelector('#newBlockDuration').value, 10);
+    state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration }));
+    saveState();
+    closeModal();
+    renderMain();
+  });
+}
+
+function wireCalendarViewEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-view]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.calendarView = btn.getAttribute('data-cal-view');
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-nav]'), function(btn){
+    btn.addEventListener('click', function(){
+      var action = btn.getAttribute('data-cal-nav');
+      if(action === 'today') state.calendarDate = todayISO();
+      else if(action === 'prev') state.calendarDate = addDaysIso(state.calendarDate, state.calendarView==='day' ? -1 : -7);
+      else if(action === 'next') state.calendarDate = addDaysIso(state.calendarDate, state.calendarView==='day' ? 1 : 7);
+      renderMain();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-unsched-item'), function(item){
+    item.addEventListener('dragstart', function(e){
+      e.dataTransfer.setData('text/sb-cal-task', JSON.stringify({
+        noteId: item.getAttribute('data-cal-task-note'),
+        folderId: item.getAttribute('data-cal-task-folder'),
+        content: item.textContent
+      }));
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(colBody){
+    var date = colBody.getAttribute('data-cal-date-body');
+
+    colBody.addEventListener('dragover', function(e){ e.preventDefault(); });
+    colBody.addEventListener('drop', function(e){
+      e.preventDefault();
+      var raw = e.dataTransfer.getData('text/sb-cal-task');
+      if(!raw) return;
+      var data = JSON.parse(raw);
+      var rect = colBody.getBoundingClientRect();
+      var y = e.clientY - rect.top;
+      var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
+      state.calendarBlocks.push(createCalendarBlock({
+        title: data.content, date: date, startMinutes: minutes, duration: 60,
+        linkedFolderId: data.folderId, linkedNoteId: data.noteId
+      }));
+      saveState();
+      renderMain();
+    });
+
+    colBody.addEventListener('click', function(e){
+      if(e.target.closest('.sb-cal-block')) return;
+      var rect = colBody.getBoundingClientRect();
+      var y = e.clientY - rect.top;
+      var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
+      openNewBlockModal(date, minutes);
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-block'), function(block){
+    var blockId = block.getAttribute('data-cal-block-id');
+
+    var delBtn = block.querySelector('[data-cal-block-delete]');
+    if(delBtn) delBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      deleteCalendarBlock(blockId);
+      renderMain();
+    });
+
+    block.addEventListener('mousedown', function(e){
+      if(e.target.closest('[data-cal-resize]') || e.target.closest('[data-cal-block-delete]')) return;
+      e.preventDefault();
+      var startY = e.clientY;
+      var startTop = parseFloat(block.style.top);
+      var moved = false;
+      function onMove(e2){
+        var dy = e2.clientY - startY;
+        if(Math.abs(dy) > 3) moved = true;
+        block.style.top = Math.max(0, startTop + dy) + 'px';
+      }
+      function onUp(){
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if(!moved) return;
+        var newTop = parseFloat(block.style.top);
+        var newStart = snapMinutes(CAL_HOUR_START*60 + (newTop / CAL_MIN_PX));
+        var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+        if(b){ b.startMinutes = newStart; saveState(); }
+        renderMain();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    var handle = block.querySelector('[data-cal-resize]');
+    if(handle) handle.addEventListener('mousedown', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var startY = e.clientY;
+      var startHeight = parseFloat(block.style.height);
+      function onMove(e2){
+        var dy = e2.clientY - startY;
+        var newHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
+        block.style.height = newHeight + 'px';
+      }
+      function onUp(){
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        var newHeight = parseFloat(block.style.height);
+        var newDuration = Math.max(15, snapMinutes(newHeight / CAL_MIN_PX));
+        var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+        if(b){ b.duration = newDuration; saveState(); }
+        renderMain();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
 function renderHorizonsView(){
   var scale = state.horizonsScale || 'week';
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">🧭 Horizons</div></div></div>';
@@ -3619,6 +3970,7 @@ function wireMainEvents(){
   if(state.view === 'folder') wireFolderViewEvents();
   if(state.view === 'themes') wireThemesViewEvents();
   if(state.view === 'horizons') wireHorizonsViewEvents();
+  if(state.view === 'calendar') wireCalendarViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
@@ -4503,7 +4855,7 @@ function openSettingsModal(){
     state.settings.syncApiKey = key;
     var statusEl = el.querySelector('#syncStatus');
     statusEl.textContent = 'Creating sync bin…';
-    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals };
+    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks };
     remoteSyncCreateBin(toSave).then(function(binId){
       state.settings.syncBinId = binId;
       state.settings.lastSyncAt = Date.now();
