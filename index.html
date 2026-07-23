@@ -1147,6 +1147,14 @@ function defaultState(){
     calendarDate: todayISO(),
     plays: [],
     editingPlayId: null,
+    siteIdeas: [
+      { id: makeId('idea'), text: 'Horizons (TimeStripe): zakładki skali Day/Week/Month/Quarter/Year + cele bez daty — kod gotowy, schowany z sidebaru', createdAt: Date.now() },
+      { id: makeId('idea'), text: 'Review (Weekly digest z AI) — kod gotowy, schowany z sidebaru', createdAt: Date.now() },
+      { id: makeId('idea'), text: 'Themes (system notatek Roberta Greene\'a) — kod gotowy, schowany z sidebaru', createdAt: Date.now() },
+      { id: makeId('idea'), text: 'Plays (Playbook koszykarski) — zbudowane, na razie wyłączone w sidebarze', createdAt: Date.now() },
+      { id: makeId('idea'), text: 'Pasek osi czasu (TimeStripe) i karta "Today" na Home — kod gotowy, schowany', createdAt: Date.now() },
+      { id: makeId('idea'), text: 'Integracja z Dyskiem Google (sync / backup / linkowanie plików) — do ustalenia szczegółów', createdAt: Date.now() }
+    ],
     horizonsScale: 'week',
     lastModifiedAt: 0,
     settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
@@ -1278,7 +1286,7 @@ function pullRemoteState(){
         // Keep the local copy and push it up instead of letting stale cloud data win.
         return remoteSyncSet({
           folders: state.folders, trash: state.trash, settings: state.settings,
-          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, lastModifiedAt: localModifiedAt
+          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, lastModifiedAt: localModifiedAt
         }).catch(function(){});
       }
       remote.pendingImages = [];
@@ -1295,7 +1303,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, lastModifiedAt: state.lastModifiedAt
+        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1360,6 +1368,7 @@ function saveLocalSettingsOnly(){
     goals: state.goals,
     calendarBlocks: state.calendarBlocks,
     plays: state.plays,
+    siteIdeas: state.siteIdeas,
     lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
@@ -1376,6 +1385,7 @@ function saveState(){
     goals: state.goals,
     calendarBlocks: state.calendarBlocks,
     plays: state.plays,
+    siteIdeas: state.siteIdeas,
     lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
@@ -1879,6 +1889,55 @@ function renderPlaysView(){
   }
   return html;
 }
+/* ============================================================
+   IDEAS (temporary planning list — remove this whole section once the site is finished)
+   ============================================================ */
+function renderIdeasView(){
+  var ideas = state.siteIdeas.slice().sort(function(a,b){ return b.createdAt - a.createdAt; });
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">💡 Ideas</div></div></div>';
+  html += '<div class="sb-page-desc">Parking lot for feature ideas we\'re leaving for later. Temporary — delete this whole tab once the site feels done.</div>';
+
+  html += '<div class="sb-goal-add-row" style="margin-top:14px;">';
+  html += '<input type="text" class="sb-goal-add-input" id="ideaAddInput" placeholder="Add an idea for later…">';
+  html += '<button class="sb-btn-cta" id="btnIdeaAdd" style="padding:8px 16px;">Add</button>';
+  html += '</div>';
+
+  if(!ideas.length){
+    html += emptyState('💡','No ideas parked yet','Add one above.');
+  } else {
+    html += '<div class="sb-goal-list">';
+    ideas.forEach(function(idea){
+      html += '<div class="sb-goal-row" data-idea-id="' + idea.id + '">';
+      html += '<span class="sb-goal-text">' + escapeHtml(idea.text) + '</span>';
+      html += '<button class="sb-goal-delete" data-idea-delete="' + idea.id + '" title="Remove">✕</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+function wireIdeasViewEvents(){
+  function addIdea(){
+    var input = document.getElementById('ideaAddInput');
+    var val = input.value.trim();
+    if(!val) return;
+    state.siteIdeas.push({ id: makeId('idea'), text: val, createdAt: Date.now() });
+    saveState();
+    renderMain();
+  }
+  var addBtn = document.getElementById('btnIdeaAdd');
+  if(addBtn) addBtn.addEventListener('click', addIdea);
+  var input = document.getElementById('ideaAddInput');
+  if(input) input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); addIdea(); } });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-idea-delete]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.siteIdeas = state.siteIdeas.filter(function(i){ return i.id !== btn.getAttribute('data-idea-delete'); });
+      saveState();
+      renderMain();
+    });
+  });
+}
+
 function wirePlaysViewEvents(){
   var newBtn = document.getElementById('btnNewPlay');
   if(newBtn) newBtn.addEventListener('click', function(){
@@ -2739,6 +2798,7 @@ function renderSidebar(){
   html += navItem('calendar','📅','Calendar');
   html += navItem('plays','🏀','Plays', null, true);
   html += navItem('trash','🗑','Trash');
+  html += navItem('ideas','💡','Ideas');
   html += '</div>';
   html += '<div class="sb-sep"></div>';
 
@@ -2986,6 +3046,7 @@ function renderMain(){
     case 'horizons': html += renderHorizonsView(); break;
     case 'calendar': html += renderCalendarView(); break;
     case 'plays': html += renderPlaysView(); break;
+    case 'ideas': html += renderIdeasView(); break;
     case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
     case 'digest': html += renderDigestView(); break;
@@ -4573,6 +4634,7 @@ function wireMainEvents(){
   if(state.view === 'horizons') wireHorizonsViewEvents();
   if(state.view === 'calendar') wireCalendarViewEvents();
   if(state.view === 'plays') wirePlaysViewEvents();
+  if(state.view === 'ideas') wireIdeasViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
@@ -5457,7 +5519,7 @@ function openSettingsModal(){
     state.settings.syncApiKey = key;
     var statusEl = el.querySelector('#syncStatus');
     statusEl.textContent = 'Creating sync bin…';
-    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays };
+    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas };
     remoteSyncCreateBin(toSave).then(function(binId){
       state.settings.syncBinId = binId;
       state.settings.lastSyncAt = Date.now();
