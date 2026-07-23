@@ -155,9 +155,8 @@ a{ color:var(--accent); }
   display:flex; align-items:center; gap:8px;
   font-size:var(--fs-lg); font-weight:700;
 }
-.sb-brand-dot{
-  width:10px; height:10px; border-radius:50%; background:var(--accent);
-  box-shadow:0 0 0 4px var(--accent-soft);
+.sb-brand-icon{
+  width:28px; height:28px; border-radius:8px; display:block; flex-shrink:0;
 }
 .sb-icon-btn{
   width:30px; height:30px; border-radius:50%;
@@ -1744,7 +1743,7 @@ function renderSidebar(){
   var overdue = countOverdueTasks();
   var html = '';
   html += '<div class="sb-brand">';
-  html += '<div class="sb-brand-name"><span class="sb-brand-dot"></span>Second Brain</div>';
+  html += '<div class="sb-brand-name"><img class="sb-brand-icon" src="logo.svg" alt="Second Brain logo">Second Brain</div>';
   html += '<div style="display:flex;gap:2px;">';
   html += '<button class="sb-icon-btn sb-mobile-menu-btn" id="btnMobileMenu" title="Folders">☰</button>';
   html += '<button class="sb-icon-btn" id="btnSettings" title="Settings">⚙</button>';
