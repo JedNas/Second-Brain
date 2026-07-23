@@ -527,6 +527,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-badge-priority.medium{ background:var(--warning-soft); color:var(--warning); }
 .sb-badge-priority.high{ background:var(--danger-soft); color:var(--danger); }
 .sb-badge-due{ font-size:var(--fs-2xs); color:var(--text-secondary); background:var(--overlay-2); padding:2px 8px; border-radius:999px; }
+.sb-badge-theme{ font-size:var(--fs-2xs); color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:999px; cursor:pointer; }
 .sb-badge-due.overdue{ background:var(--danger-soft); color:var(--danger); font-weight:600; }
 .sb-note-actions{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
 .sb-note-menu-btn{ width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); }
@@ -961,6 +962,7 @@ function defaultState(){
     folders: defaultFolders(),
     trash: { notes:[], folders:[] },
     selectedFolderId: null,
+    selectedTheme: null,
     view: 'home',
     pendingImages: [],
     linkMode: false,
@@ -1407,6 +1409,7 @@ function createNote(content, opts){
     description: opts.description || undefined,
     priority: opts.priority || undefined,
     dueDate: opts.dueDate || undefined,
+    theme: opts.theme || undefined,
     done: false,
     pinned: false,
     recurrence: opts.recurrence || undefined,
@@ -1924,6 +1927,8 @@ function renderAll(){
 function navigateTo(view, extra){
   state.view = view;
   if(extra && extra.folderId !== undefined) state.selectedFolderId = extra.folderId;
+  if(extra && extra.theme !== undefined) state.selectedTheme = extra.theme;
+  else if(view === 'themes') state.selectedTheme = null;
   state.selectMode = false;
   state.selected = {};
   renderAll();
@@ -1941,6 +1946,7 @@ function renderSidebar(){
   html += '<div class="sb-nav">';
   html += navItem('home','🏠','Home');
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
+  html += navItem('themes','🏷️','Themes');
   html += navItem('digest','✨','Review');
   html += navItem('trash','🗑','Trash');
   html += '</div>';
@@ -2177,6 +2183,7 @@ function renderMain(){
   switch(state.view){
     case 'folder': html += renderFolderView(); break;
     case 'tasks': html += renderTasksView(); break;
+    case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
     case 'digest': html += renderDigestView(); break;
     default: html += renderHomeView(); break;
@@ -2882,6 +2889,7 @@ function renderNoteCard(note, folder, opts){
   if(isTask && note.priority) html += '<span class="sb-badge-priority ' + note.priority + '">' + note.priority + '</span>';
   if(isTask && note.dueDate) html += '<span class="sb-badge-due' + (overdue ? ' overdue' : '') + '">' + (overdue ? 'Overdue · ' : '') + escapeHtml(note.dueDate) + '</span>';
   if(note.recurrence) html += '<span class="sb-badge-due">🔁 ' + note.recurrence + '</span>';
+  if(note.theme) html += '<span class="sb-badge-theme" data-theme-jump="' + escapeHtml(note.theme) + '">🏷️ ' + escapeHtml(note.theme) + '</span>';
   if(!opts.hideFolder) html += '<span class="sb-note-time" data-folder-jump="' + folder.id + '" style="cursor:pointer;">in ' + escapeHtml(folder.name) + '</span>';
   html += '</div>';
 
@@ -2921,6 +2929,7 @@ function noteMenuItems(note, folder){
   items.push({ label: note.pinned ? 'Unpin' : 'Pin', action:'pin' });
   items.push({ label:'Edit text', action:'edit' });
   items.push({ label: note.description ? 'Edit description' : 'Add description…', action:'description' });
+  items.push({ label: note.theme ? 'Theme: ' + note.theme : 'Set theme…', action:'theme' });
   items.push({ label:'History', action:'history' });
   if(folderIsTaskList(folder)){
     items.push({ label:'Repeat', action:'repeat' });
@@ -3158,6 +3167,64 @@ function getBacklinks(folderName){
 /* ============================================================
    VIEW: TASKS
    ============================================================ */
+/* ============================================================
+   VIEW: THEMES (Robert Greene notecard-style theming)
+   ============================================================ */
+function renderThemesView(){
+  var all = getAllNotesCached();
+
+  if(state.selectedTheme){
+    var theme = state.selectedTheme;
+    var items = all.filter(function(item){ return item.note.theme === theme; });
+    items.sort(function(a,b){ return b.note.createdAt - a.note.createdAt; });
+    var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏷️', 22) + ' ' + escapeHtml(theme) + '</div></div></div>';
+    html += '<div class="sb-page-desc"><a href="#" data-themes-back="1">← All themes</a></div>';
+    if(!items.length){
+      html += emptyState('🏷️','No notes with this theme yet','');
+    } else {
+      html += '<div class="sb-note-list" style="margin-top:14px;">';
+      items.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  var counts = {};
+  all.forEach(function(item){
+    if(item.note.theme) counts[item.note.theme] = (counts[item.note.theme] || 0) + 1;
+  });
+  var themeNames = Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); });
+
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🏷️ Themes</div></div></div>';
+  html += '<div class="sb-page-desc">Browse notes by theme, across every folder — inspired by Robert Greene\'s notecard system. Open a note\'s ⋯ menu and choose "Set theme…" to add one.</div>';
+  if(!themeNames.length){
+    html += emptyState('🏷️','No themes yet','Set a theme on any note to start grouping ideas across your whole second brain.');
+  } else {
+    html += '<div class="sb-folder-grid" style="margin-top:14px;">';
+    themeNames.forEach(function(t){
+      html += '<button class="sb-folder-tile" data-theme-tile="' + escapeHtml(t) + '">';
+      html += '<span class="ico">' + folderIconSvg('🏷️', 20) + '</span>';
+      html += '<div><div class="name">' + escapeHtml(t) + '</div><div class="cnt">' + counts[t] + ' note' + (counts[t]===1?'':'s') + '</div></div>';
+      html += '</button>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+
+function wireThemesViewEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-theme-tile]'), function(btn){
+    btn.addEventListener('click', function(){
+      navigateTo('themes', { theme: btn.getAttribute('data-theme-tile') });
+    });
+  });
+  var back = document.querySelector('[data-themes-back]');
+  if(back) back.addEventListener('click', function(e){
+    e.preventDefault();
+    navigateTo('themes', { theme: null });
+  });
+}
+
 function renderTasksView(){
   var html = '<div class="sb-page-head"><div class="sb-page-title">✓ Tasks</div>';
   html += '<div class="sb-page-actions">' + renderTaskSortSelect() + '</div></div>';
@@ -3277,6 +3344,7 @@ function wireMainEvents(){
   wireCommonPageEvents();
 
   if(state.view === 'folder') wireFolderViewEvents();
+  if(state.view === 'themes') wireThemesViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
@@ -3322,6 +3390,11 @@ function wireNoteCardEvents(){
       e.stopPropagation();
       toggleTaskDone(folderId, noteId);
       renderAll();
+    });
+    var themeBadge = card.querySelector('[data-theme-jump]');
+    if(themeBadge) themeBadge.addEventListener('click', function(e){
+      e.stopPropagation();
+      navigateTo('themes', { theme: themeBadge.getAttribute('data-theme-jump') });
     });
     var togglePin = card.querySelector('[data-toggle-pin]');
     if(togglePin) togglePin.addEventListener('click', function(e){
@@ -3605,6 +3678,7 @@ function handleNoteMenuAction(action, note, folder){
   }
   if(action === 'edit'){ openEditTextModal(note, folder); return; }
   if(action === 'description'){ openDescriptionEditModal(note); return; }
+  if(action === 'theme'){ openThemeEditModal(note); return; }
   if(action === 'history'){ openHistoryModal(note); return; }
   if(action === 'repeat'){ openRepeatModal(note); return; }
   if(action === 'dueedit'){ openDueEditModal(note); return; }
@@ -3839,6 +3913,43 @@ function openDescriptionEditModal(note){
     var val = ta.value;
     if(note.description !== val) pushHistory(note);
     note.description = val;
+    saveState(); renderAll(); closeModal();
+  });
+}
+
+function getAllThemes(){
+  var set = {};
+  getAllNotesCached().forEach(function(item){
+    if(item.note.theme) set[item.note.theme] = true;
+  });
+  return Object.keys(set).sort(function(a,b){ return a.localeCompare(b); });
+}
+
+function openThemeEditModal(note){
+  var themes = getAllThemes();
+  var datalistHtml = '<datalist id="themeSuggestions">' + themes.map(function(t){ return '<option value="' + escapeHtml(t) + '">'; }).join('') + '</datalist>';
+  var el = openModal(
+    '<h2>Theme</h2>' +
+    '<p style="font-size:var(--fs-xs);color:var(--text-secondary);margin-bottom:8px;">Give this note a theme — like writing it in the corner of an index card. Browse all notes by theme regardless of which folder they\'re in.</p>' +
+    '<div class="sb-field"><input type="text" id="themeModalInput" list="themeSuggestions" placeholder="e.g. Ambition, Patience, Marketing…" value="' + escapeHtml(note.theme || '') + '"></div>' +
+    datalistHtml +
+    '<div class="sb-modal-foot">' +
+      (note.theme ? '<button class="sb-btn-text" id="themeModalRemove" style="color:var(--danger);margin-right:auto;">Remove</button>' : '') +
+      '<button class="sb-btn-text" id="themeModalCancel">Cancel</button>' +
+      '<button class="sb-btn-cta" id="themeModalSave">Save</button>' +
+    '</div>'
+  );
+  var input = el.querySelector('#themeModalInput');
+  input.focus();
+  el.querySelector('#themeModalCancel').addEventListener('click', closeModal);
+  var removeBtn = el.querySelector('#themeModalRemove');
+  if(removeBtn) removeBtn.addEventListener('click', function(){
+    note.theme = undefined;
+    saveState(); renderAll(); closeModal();
+  });
+  el.querySelector('#themeModalSave').addEventListener('click', function(){
+    var val = input.value.trim();
+    note.theme = val || undefined;
     saveState(); renderAll(); closeModal();
   });
 }
