@@ -202,7 +202,7 @@ a{ color:var(--accent); }
 }
 .sb-nav-item:hover, .sb-folder-row:hover{ background:var(--overlay-2); color:var(--text); }
 .sb-nav-item.active{ background:var(--accent-soft); color:var(--accent); font-weight:600; }
-.sb-nav-item .sb-ico{ font-size:15px; width:18px; text-align:center; }
+.sb-nav-item .sb-ico{ width:18px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .sb-nav-badge{
   margin-left:auto; background:var(--danger); color:#fff; font-size:var(--fs-2xs);
   font-weight:700; border-radius:999px; padding:1px 6px; min-width:16px; text-align:center;
@@ -775,11 +775,13 @@ var FOLDER_ICON_PATHS = {
   '✉️': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6l9 7 9-7"/>',
 
   '🔒': '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
-  '🛡️': '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>'
+  '🛡️': '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  '✨': '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 3.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/>',
+  '🗑': '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>'
 };
 
 var FOLDER_ICON_CATEGORIES = [
-  { name:'Ogólne', icons:['📁','⭐','❤️','🔖','🏷️','🚩','📍','🔔','🎁'] },
+  { name:'Ogólne', icons:['📁','⭐','❤️','🔖','🏷️','🚩','📍','🔔','🎁','✨'] },
   { name:'Praca i produktywność', icons:['💼','🎯','✅','📝','💡','📅','⏰','📋','📊','🗄️','🖨️'] },
   { name:'Dom i zakupy', icons:['🏠','🔑','🛏️','🛒','🛍️'] },
   { name:'Finanse', icons:['💰','💳','👛','🐷','🧾','📈'] },
@@ -790,7 +792,7 @@ var FOLDER_ICON_CATEGORIES = [
   { name:'Technologia', icons:['💻','📱','📶','🎮','📷'] },
   { name:'Rozrywka i hobby', icons:['🎵','📚','🎨','🎬','🎧'] },
   { name:'Ludzie i komunikacja', icons:['👤','👥','💬','✉️'] },
-  { name:'Inne', icons:['🧠','🔧','🔒','🛡️'] }
+  { name:'Inne', icons:['🧠','🔧','🔒','🛡️','🗑'] }
 ];
 
 function folderIconSvg(emoji, size){
@@ -1909,8 +1911,8 @@ function renderSidebar(){
   var html = '';
 
   html += '<div class="sb-nav">';
-  html += navItem('home','⌂','Home');
-  html += navItem('tasks','✓','Tasks', overdue > 0 ? overdue : null);
+  html += navItem('home','🏠','Home');
+  html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
   html += navItem('digest','✨','Review');
   html += navItem('trash','🗑','Trash');
   html += '</div>';
@@ -1930,7 +1932,7 @@ function renderSidebar(){
 function navItem(view, ico, label, badge){
   var active = state.view === view ? ' active' : '';
   var badgeHtml = badge ? '<span class="sb-nav-badge">' + badge + '</span>' : '';
-  return '<button class="sb-nav-item' + active + '" data-nav="' + view + '"><span class="sb-ico">' + ico + '</span>' + label + badgeHtml + '</button>';
+  return '<button class="sb-nav-item' + active + '" data-nav="' + view + '"><span class="sb-ico">' + folderIconSvg(ico, 17) + '</span>' + label + badgeHtml + '</button>';
 }
 
 function renderFolderNodes(folders, depth){
