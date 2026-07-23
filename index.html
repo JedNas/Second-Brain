@@ -152,6 +152,7 @@ a{ color:var(--accent); }
 .sb-header-brand{
   display:flex; align-items:center; gap:8px; flex-shrink:0;
   font-size:var(--fs-lg); font-weight:700;
+  width:calc(var(--sidebar-w) - 24px);
 }
 .sb-header-search{ flex:0 1 560px; min-width:140px; margin-bottom:0 !important; }
 .sb-header-right{ display:flex; align-items:center; gap:8px; margin-left:auto; flex-shrink:0; }
@@ -621,6 +622,7 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
   #app{ flex-direction:column; }
   .sb-topheader{ padding:10px 12px; gap:10px; }
   .sb-header-brand-label{ display:none; }
+  .sb-header-brand{ width:auto; }
   .sb-header-search{ flex:1; min-width:0; }
   .sb-profile-text, .sb-profile-chevron{ display:none; }
   .sb-profile-chip{ padding:5px; }
