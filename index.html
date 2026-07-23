@@ -243,8 +243,11 @@ a{ color:var(--accent); }
 }
 .sb-new-folder-btn:hover{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 
+.sb-sidebar-stats{
+  margin-top:14px; padding:0 10px; font-size:var(--fs-2xs); color:var(--text-tertiary); line-height:1.4;
+}
 .sb-save-indicator{
-  margin-top:12px; padding:6px 10px; font-size:var(--fs-2xs); color:var(--text-tertiary);
+  margin-top:4px; padding:6px 10px; font-size:var(--fs-2xs); color:var(--text-tertiary);
 }
 .sb-save-indicator.error{ color:var(--danger); font-weight:600; }
 
@@ -415,15 +418,6 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-breadcrumb a{ color:var(--text-tertiary); text-decoration:none; cursor:pointer; }
 .sb-breadcrumb a:hover{ color:var(--accent); }
 .sb-page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:6px; }
-.sb-mini-stats{
-  display:flex; align-items:center; gap:10px; flex-shrink:0;
-  background:var(--bg-sidebar); border:1px solid var(--separator); border-radius:999px;
-  padding:7px 16px; box-shadow:var(--shadow-sm);
-}
-.sb-mini-stat{ display:flex; align-items:center; gap:5px; font-size:var(--fs-xs); color:var(--text-secondary); white-space:nowrap; }
-.sb-mini-stat b{ color:var(--text); font-weight:700; }
-.sb-mini-stat svg{ color:var(--accent); }
-.sb-mini-stat-sep{ width:1px; height:14px; background:var(--separator); }
 .sb-page-title{ display:flex; align-items:center; gap:10px; font-size:var(--fs-2xl); }
 .sb-page-desc{ color:var(--text-secondary); font-size:var(--fs-sm); margin-top:6px; max-width:60ch; }
 .sb-page-actions{ display:flex; gap:6px; flex-wrap:wrap; }
@@ -1941,6 +1935,8 @@ function renderSidebar(){
   html += '</div>';
 
   html += '<button class="sb-new-folder-btn" id="btnNewFolderTop">+ New Folder</button>';
+  var statsAll = getAllNotesCached();
+  html += '<div class="sb-sidebar-stats">' + statsAll.length + ' notes · ' + flattenFolders().length + ' folders · ' + computeStreak() + ' day streak</div>';
   html += '<div class="sb-save-indicator" id="saveIndicator">Saved</div>';
 
   el.innerHTML = html;
@@ -3003,14 +2999,7 @@ function renderHomeView(){
   var folderCount = flattenFolders().length;
   var streak = computeStreak();
 
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div>';
-  html += '<div class="sb-mini-stats">';
-  html += '<span class="sb-mini-stat">' + folderIconSvg('📝', 14) + '<b>' + all.length + '</b></span>';
-  html += '<span class="sb-mini-stat-sep"></span>';
-  html += '<span class="sb-mini-stat">' + folderIconSvg('📁', 14) + '<b>' + folderCount + '</b></span>';
-  html += '<span class="sb-mini-stat-sep"></span>';
-  html += '<span class="sb-mini-stat">🔥<b>' + streak + '</b></span>';
-  html += '</div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
 
   var todayBuckets = computeTaskBuckets();
   var todayItems = todayBuckets.overdue.concat(todayBuckets.today);
