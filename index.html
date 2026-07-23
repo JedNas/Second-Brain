@@ -492,6 +492,19 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-timeline-expanded{
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
   padding:16px; box-shadow:var(--shadow-sm); margin-bottom:20px;
+  animation:sbSlideFadeIn 220ms ease;
+  transform-origin:top;
+}
+.sb-timeline-expanded.closing{
+  animation:sbSlideFadeOut 170ms ease forwards;
+}
+@keyframes sbSlideFadeIn{
+  from{ opacity:0; transform:translateY(-8px) scaleY(0.96); }
+  to{ opacity:1; transform:translateY(0) scaleY(1); }
+}
+@keyframes sbSlideFadeOut{
+  from{ opacity:1; transform:translateY(0) scaleY(1); }
+  to{ opacity:0; transform:translateY(-8px) scaleY(0.96); }
 }
 .sb-timeline-day .td-name{ font-size:9px; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-tertiary); font-weight:700; }
 .sb-timeline-day.today .td-name{ color:var(--accent); }
@@ -3144,16 +3157,30 @@ function renderTimelineStrip(){
   return html;
 }
 
+function closeTimelineExpanded(){
+  var el = document.querySelector('.sb-timeline-expanded');
+  if(!el){ timelineSelectedDay = null; renderMain(); return; }
+  el.classList.add('closing');
+  setTimeout(function(){
+    timelineSelectedDay = null;
+    renderMain();
+  }, 170);
+}
+
 function wireTimelineStripEvents(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-timeline-day]'), function(el){
     el.addEventListener('click', function(){
       var day = el.getAttribute('data-timeline-day');
-      timelineSelectedDay = (timelineSelectedDay === day) ? null : day;
-      renderMain();
+      if(timelineSelectedDay === day){
+        closeTimelineExpanded();
+      } else {
+        timelineSelectedDay = day;
+        renderMain();
+      }
     });
   });
   var closeBtn = document.querySelector('[data-timeline-close]');
-  if(closeBtn) closeBtn.addEventListener('click', function(){ timelineSelectedDay = null; renderMain(); });
+  if(closeBtn) closeBtn.addEventListener('click', closeTimelineExpanded);
 }
 
 function renderHomeView(){
