@@ -416,14 +416,22 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-breadcrumb a:hover{ color:var(--accent); }
 .sb-page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:6px; }
 .sb-mini-stats{
-  display:flex; align-items:center; gap:10px; flex-shrink:0;
-  background:var(--bg-sidebar); border:1px solid var(--separator); border-radius:999px;
-  padding:7px 16px; box-shadow:var(--shadow-sm);
+  display:flex; align-items:stretch; gap:8px; flex-shrink:0;
 }
-.sb-mini-stat{ display:flex; align-items:center; gap:5px; font-size:var(--fs-xs); color:var(--text-secondary); white-space:nowrap; }
-.sb-mini-stat b{ color:var(--text); font-weight:700; }
-.sb-mini-stat svg{ color:var(--accent); }
-.sb-mini-stat-sep{ width:1px; height:14px; background:var(--separator); }
+.sb-mini-stat{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:var(--bg-elevated); border:1px solid var(--separator); border-radius:14px;
+  padding:8px 14px; box-shadow:var(--shadow-sm); min-width:64px;
+}
+.sb-mini-stat b{ font-size:var(--fs-md); font-weight:800; color:var(--text); line-height:1.1; }
+.sb-mini-stat i{ font-style:normal; font-size:9px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-tertiary); font-weight:600; }
+.sb-mini-stat-ico{
+  width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:11px; margin-bottom:2px;
+}
+.sb-mini-stat-ico.blue{ background:var(--blue-soft); color:var(--blue); }
+.sb-mini-stat-ico.green{ background:var(--low-soft); color:var(--low); }
+.sb-mini-stat-ico.orange{ background:var(--warning-soft); color:var(--warning); }
 .sb-page-title{ display:flex; align-items:center; gap:10px; font-size:var(--fs-2xl); }
 .sb-page-desc{ color:var(--text-secondary); font-size:var(--fs-sm); margin-top:6px; max-width:60ch; }
 .sb-page-actions{ display:flex; gap:6px; flex-wrap:wrap; }
@@ -3001,11 +3009,9 @@ function renderHomeView(){
 
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div>';
   html += '<div class="sb-mini-stats">';
-  html += '<span class="sb-mini-stat">' + folderIconSvg('📝', 14) + '<b>' + all.length + '</b></span>';
-  html += '<span class="sb-mini-stat-sep"></span>';
-  html += '<span class="sb-mini-stat">' + folderIconSvg('📁', 14) + '<b>' + folderCount + '</b></span>';
-  html += '<span class="sb-mini-stat-sep"></span>';
-  html += '<span class="sb-mini-stat">🔥<b>' + streak + '</b></span>';
+  html += '<span class="sb-mini-stat"><span class="sb-mini-stat-ico blue">' + folderIconSvg('📝', 13) + '</span><b>' + all.length + '</b><i>notes</i></span>';
+  html += '<span class="sb-mini-stat"><span class="sb-mini-stat-ico green">' + folderIconSvg('📁', 13) + '</span><b>' + folderCount + '</b><i>folders</i></span>';
+  html += '<span class="sb-mini-stat"><span class="sb-mini-stat-ico orange">🔥</span><b>' + streak + '</b><i>streak</i></span>';
   html += '</div></div>';
 
   var todayBuckets = computeTaskBuckets();
