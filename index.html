@@ -243,8 +243,11 @@ a{ color:var(--accent); }
 }
 .sb-new-folder-btn:hover{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
 
+.sb-sidebar-stats{
+  margin-top:14px; padding:0 10px; font-size:var(--fs-2xs); color:var(--text-tertiary); line-height:1.4;
+}
 .sb-save-indicator{
-  margin-top:12px; padding:6px 10px; font-size:var(--fs-2xs); color:var(--text-tertiary);
+  margin-top:4px; padding:6px 10px; font-size:var(--fs-2xs); color:var(--text-tertiary);
 }
 .sb-save-indicator.error{ color:var(--danger); font-weight:600; }
 
@@ -1928,6 +1931,8 @@ function renderSidebar(){
   html += '</div>';
 
   html += '<button class="sb-new-folder-btn" id="btnNewFolderTop">+ New Folder</button>';
+  var statsAll = getAllNotesCached();
+  html += '<div class="sb-sidebar-stats">' + statsAll.length + ' notes · ' + flattenFolders().length + ' folders · ' + computeStreak() + ' day streak</div>';
   html += '<div class="sb-save-indicator" id="saveIndicator">Saved</div>';
 
   el.innerHTML = html;
@@ -2991,12 +2996,6 @@ function renderHomeView(){
   var streak = computeStreak();
 
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
-
-  html += '<div class="sb-stats">';
-  html += '<div class="sb-stat"><div class="val">' + all.length + '</div><div class="lbl">Notes</div></div>';
-  html += '<div class="sb-stat"><div class="val">' + folderCount + '</div><div class="lbl">Folders</div></div>';
-  html += '<div class="sb-stat"><div class="val">' + streak + '</div><div class="lbl">Day streak</div></div>';
-  html += '</div>';
 
   var todayBuckets = computeTaskBuckets();
   var todayItems = todayBuckets.overdue.concat(todayBuckets.today);
