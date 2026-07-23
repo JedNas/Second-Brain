@@ -2536,7 +2536,11 @@ function classify(content, images, audio){
   });
   if(audio){
     var audioBase64 = audio.base64 || (audio.dataUrl ? audio.dataUrl.split(',')[1] : null);
-    if(audioBase64) contentBlocks.push({ type:'audio', source:{ type:'base64', media_type: audio.mime, data: audioBase64 } });
+    var geminiMime = audio.mime;
+    if(geminiMime === 'audio/x-m4a' || geminiMime === 'audio/mp4' || geminiMime === 'audio/m4a' || !geminiMime){
+      geminiMime = 'audio/aac';
+    }
+    if(audioBase64) contentBlocks.push({ type:'audio', source:{ type:'base64', media_type: geminiMime, data: audioBase64 } });
   }
   contentBlocks.push({ type:'text', text: content });
 
@@ -3228,7 +3232,8 @@ function renderCaptureBox(){
 
   html += '<div class="sb-capture-row">';
   html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
-  html += '<input type="file" id="imageFileInput" accept="image/*,video/*,audio/*" multiple style="display:none;">';
+  html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
+  html += '<input type="file" id="audioFileInput" accept="audio/mp4,audio/x-m4a,audio/aac,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/flac,.m4a,.mp3,.wav,.aac,.caf" style="display:none;">';
   html += '<span class="sb-spacer"></span>';
   html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">' + micIconSvg(18) + '</button>';
   html += '<button class="sb-btn-cta" id="btnFile">File</button>';
@@ -3271,7 +3276,7 @@ function wireCaptureEvents(){
     });
   }
   var fileInput = document.getElementById('imageFileInput');
-  var filePickMode = 'image';
+  var audioFileInput = document.getElementById('audioFileInput');
   var capturePlusBtn = document.getElementById('btnCapturePlus');
   if(capturePlusBtn) capturePlusBtn.addEventListener('click', function(){
     openFloatingMenu(capturePlusBtn, 'floatingCaptureMenu', [
@@ -3285,32 +3290,26 @@ function wireCaptureEvents(){
         renderMain();
         if(captureDraft.linkMode){ var li = document.getElementById('linkUrlInput'); if(li) li.focus(); }
       } else if(action === 'image'){
-        filePickMode = 'image';
         fileInput.click();
       } else if(action === 'audio'){
-        filePickMode = 'audio';
-        fileInput.click();
+        audioFileInput.click();
       }
     });
+  });
+  if(audioFileInput) audioFileInput.addEventListener('change', function(){
+    var afile = audioFileInput.files[0];
+    if(!afile) return;
+    var areader = new FileReader();
+    areader.onload = function(){
+      state.pendingVoiceNote = { dataUrl: areader.result, mime: afile.type || 'audio/mp4', uploaded: true };
+      audioFileInput.value = '';
+      renderMain();
+    };
+    areader.readAsDataURL(afile);
   });
   if(fileInput) fileInput.addEventListener('change', function(){
     var files = Array.prototype.slice.call(fileInput.files);
     if(!files.length) return;
-
-    if(filePickMode === 'audio'){
-      var afile = files[0];
-      if(afile.type && afile.type.indexOf('audio') === -1 && afile.type.indexOf('video') === -1){
-        showToast('Heads up: that file doesn\'t look like audio (' + (afile.type || 'unknown type') + ') — attaching it anyway.');
-      }
-      var areader = new FileReader();
-      areader.onload = function(){
-        state.pendingVoiceNote = { dataUrl: areader.result, mime: afile.type || 'audio/mp4', uploaded: true };
-        fileInput.value = '';
-        renderMain();
-      };
-      areader.readAsDataURL(afile);
-      return;
-    }
 
     var remaining = files.length;
     files.forEach(function(file){
