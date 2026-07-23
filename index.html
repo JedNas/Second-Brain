@@ -2485,13 +2485,15 @@ function callGemini(systemPrompt, userContent, maxTokens){
   });
 }
 
-function callGeminiMessages(systemPrompt, messages, maxTokens){
+function callGeminiMessages(systemPrompt, messages, maxTokens, tools){
   if(!hasGeminiKey()) return Promise.reject(new Error('Add your free Gemini API key in Settings to use AI features.'));
   var contents = messages.map(function(m){
-    return { role: (m.role === 'assistant' ? 'model' : 'user'), parts: [{ text: m.content }] };
+    if(m.parts) return { role: m.role, parts: m.parts };
+    return { role: (m.role === 'assistant' ? 'model' : m.role), parts: [{ text: m.content }] };
   });
   var body = { contents: contents, generationConfig: { maxOutputTokens: maxTokens || 1000 } };
   if(systemPrompt) body.system_instruction = { parts:[{ text: systemPrompt }] };
+  if(tools) body.tools = tools;
   return fetch(geminiApiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.settings.geminiApiKey },
@@ -2597,22 +2599,142 @@ function buildBrainContext(){
   return lines.join('\n');
 }
 
+var BRAIN_TOOLS = [{ function_declarations: [
+  {
+    name: 'add_note',
+    description: 'Create a new note, task, or list item (e.g. a shopping item or to-do) and file it into an existing folder.',
+    parameters: { type:'object', properties:{
+      content: { type:'string', description:'The note text, short and natural, e.g. "Milk" or "Call the dentist".' },
+      folder: { type:'string', description:'Name of the existing folder to file it into, e.g. "To Buy" or "To Do". Match it to the closest existing folder name.' },
+      description: { type:'string', description:'Optional extra detail or context for the note.' },
+      priority: { type:'string', description:'Optional priority: low, medium, or high.' },
+      due_date: { type:'string', description:'Optional due date in YYYY-MM-DD format.' }
+    }, required:['content','folder'] }
+  },
+  {
+    name: 'update_note',
+    description: 'Edit an existing note or task - change its text, description, priority, or due date.',
+    parameters: { type:'object', properties:{
+      search: { type:'string', description:'Text to find the existing note by (partial match on its current content).' },
+      new_content: { type:'string', description:'New text for the note, if changing it.' },
+      new_description: { type:'string', description:'New description, if changing it.' },
+      priority: { type:'string', description:'New priority: low, medium, or high.' },
+      due_date: { type:'string', description:'New due date in YYYY-MM-DD format.' }
+    }, required:['search'] }
+  },
+  {
+    name: 'complete_task',
+    description: 'Mark an existing task as done/completed.',
+    parameters: { type:'object', properties:{
+      search: { type:'string', description:'Text to find the task by (partial match on its content).' }
+    }, required:['search'] }
+  },
+  {
+    name: 'delete_note',
+    description: 'Delete (move to trash) an existing note, task, or list item.',
+    parameters: { type:'object', properties:{
+      search: { type:'string', description:'Text to find the note by (partial match on its content).' }
+    }, required:['search'] }
+  }
+]}];
+
+function findFolderByNameFuzzy(query){
+  var all = flattenFolders();
+  if(!query) return all[0] || null;
+  var q = query.toLowerCase().trim();
+  var exact = all.find(function(f){ return f.name.toLowerCase() === q; });
+  if(exact) return exact;
+  var partial = all.find(function(f){ return f.name.toLowerCase().indexOf(q) !== -1 || q.indexOf(f.name.toLowerCase()) !== -1; });
+  return partial || all[0] || null;
+}
+function findNoteByQueryFuzzy(query){
+  var all = getAllNotesCached();
+  if(!query) return null;
+  var q = query.toLowerCase().trim();
+  var exact = all.find(function(item){ return item.note.content.toLowerCase() === q; });
+  if(exact) return exact;
+  return all.find(function(item){ return item.note.content.toLowerCase().indexOf(q) !== -1; }) || null;
+}
+
+function executeBrainTool(name, args){
+  args = args || {};
+  if(name === 'add_note'){
+    var folder = findFolderByNameFuzzy(args.folder);
+    if(!folder) return { error: 'No folders exist yet to file this into.' };
+    var note = createNote(args.content || 'Untitled', {
+      description: args.description || '',
+      priority: args.priority || undefined,
+      dueDate: args.due_date || undefined
+    });
+    folder.notes.push(note);
+    invalidateNotesCache();
+    saveState();
+    return { success:true, filed_in: folder.name, content: note.content };
+  }
+  if(name === 'update_note'){
+    var loc = findNoteByQueryFuzzy(args.search);
+    if(!loc) return { error: 'Could not find a note matching "' + args.search + '".' };
+    if(args.new_content){ pushHistory(loc.note); loc.note.content = args.new_content; }
+    if(args.new_description !== undefined) loc.note.description = args.new_description;
+    if(args.priority) loc.note.priority = args.priority;
+    if(args.due_date) loc.note.dueDate = args.due_date;
+    invalidateNotesCache();
+    saveState();
+    return { success:true, updated: loc.note.content };
+  }
+  if(name === 'complete_task'){
+    var loc2 = findNoteByQueryFuzzy(args.search);
+    if(!loc2) return { error: 'Could not find a task matching "' + args.search + '".' };
+    loc2.note.done = true;
+    invalidateNotesCache();
+    saveState();
+    return { success:true, completed: loc2.note.content };
+  }
+  if(name === 'delete_note'){
+    var loc3 = findNoteByQueryFuzzy(args.search);
+    if(!loc3) return { error: 'Could not find a note matching "' + args.search + '".' };
+    var deletedContent = loc3.note.content;
+    deleteNoteSoft(loc3.folder.id, loc3.note.id);
+    invalidateNotesCache();
+    saveState();
+    return { success:true, deleted: deletedContent };
+  }
+  return { error: 'Unknown tool: ' + name };
+}
+
 function askBrainAI(question, priorMessages){
   var systemPrompt = 'You are a helpful assistant built into someone\'s personal "second brain" note-taking app. ' +
     'You can see everything currently stored: every folder and every note inside it, given below. ' +
     'Answer the person\'s questions about their own notes directly and conversationally — summarize, count, filter, compare, or find things exactly as asked. ' +
+    'You can also take action on their behalf using the available tools: add new notes/tasks/list items to a folder, edit an existing note, mark a task complete, or delete a note. ' +
+    'Use a tool whenever the person asks you to add, create, edit, update, change, finish, complete, remove, or delete something — don\'t just describe what you would do, actually call the tool. ' +
     'If asked to count or list something, work it out precisely from the data below rather than guessing. ' +
     'If something isn\'t in their notes, say so plainly instead of making it up. ' +
     'Keep answers concise and in plain language — no markdown headers, no bullet-point walls unless a list is genuinely what was asked for. ' +
     'Today\'s date is ' + todayISO() + ' (YYYY-MM-DD).\n\n' +
     'Here is everything currently in their second brain:\n' + buildBrainContext();
 
-  var messages = (priorMessages || []).map(function(m){ return { role: m.role, content: m.content }; });
-  messages.push({ role: 'user', content: question });
+  var contents = (priorMessages || []).map(function(m){ return { role: (m.role==='assistant'?'model':'user'), content: m.content }; });
+  contents.push({ role:'user', content: question });
 
-  return callGeminiMessages(systemPrompt, messages, 800).then(function(data){
-    return extractText(data).trim();
-  });
+  function step(iterationsLeft){
+    return callGeminiMessages(systemPrompt, contents, 800, BRAIN_TOOLS).then(function(data){
+      var candidate = data && data.candidates && data.candidates[0];
+      var parts = (candidate && candidate.content && candidate.content.parts) || [];
+      var fnCallPart = parts.find(function(p){ return p.functionCall; });
+
+      if(fnCallPart && iterationsLeft > 0){
+        var result = executeBrainTool(fnCallPart.functionCall.name, fnCallPart.functionCall.args);
+        contents.push({ role:'model', parts: parts });
+        contents.push({ role:'user', parts: [{ functionResponse: { name: fnCallPart.functionCall.name, response: result } }] });
+        return step(iterationsLeft - 1);
+      }
+
+      return extractText(data).trim();
+    });
+  }
+
+  return step(4);
 }
 
 function generateDigest(){
@@ -3881,7 +4003,7 @@ function sendBrainChatMessage(text){
     brainChatMessages.push({ role:'assistant', content: answer || "I couldn't come up with an answer for that." });
     brainChatLoading = false;
     brainChatShouldFocus = true;
-    renderMain();
+    renderAll();
   }).catch(function(err){
     brainChatMessages.push({ role:'assistant', content: "Couldn't reach the AI: " + err.message });
     brainChatLoading = false;
