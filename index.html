@@ -269,7 +269,7 @@ a{ color:var(--accent); }
 /* ---------- Capture box ---------- */
 .sb-capture{
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
-  padding:16px; box-shadow:var(--shadow-sm); margin-bottom:14px;
+  padding:14px 14px 8px; box-shadow:var(--shadow-sm); margin-bottom:14px;
 }
 .sb-capture textarea{
   width:100%; border:none; outline:none; resize:none; background:transparent;
@@ -277,7 +277,7 @@ a{ color:var(--accent); }
   font-family:inherit; line-height:1.5;
 }
 .sb-capture textarea::placeholder{ color:var(--text-tertiary); }
-.sb-capture-row{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.sb-capture-row{ display:flex; align-items:center; gap:4px; margin-top:6px; flex-wrap:wrap; }
 .sb-chip{
   display:inline-flex; align-items:center; gap:6px; border:none; background:var(--overlay-2);
   color:var(--text-secondary); font-size:var(--fs-xs); font-weight:600; padding:7px 13px;
@@ -287,9 +287,9 @@ a{ color:var(--accent); }
 .sb-chip.active{ background:var(--accent); color:#fff; }
 .sb-chip.recording{ background:var(--danger); color:#fff; }
 .sb-capture-plus{
-  border:1px solid var(--separator); font-size:20px; font-weight:400; line-height:1;
+  border:none; background:transparent; border-radius:6px; font-size:24px; font-weight:300; line-height:1;
 }
-.sb-capture-voice{ border:1px solid var(--separator); font-size:15px; }
+.sb-capture-voice{ border:1px solid var(--separator); }
 .sb-capture-voice.recording{ background:var(--danger); border-color:var(--danger); color:#fff; animation:sbPulseRec 1.2s ease-in-out infinite; }
 @keyframes sbPulseRec{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 50%{ box-shadow:0 0 0 6px rgba(229,72,77,0.15); } }
 .sb-spacer{ flex:1; }
@@ -817,6 +817,16 @@ function folderIconSvg(emoji, size){
   size = size || 16;
   var inner = FOLDER_ICON_PATHS[emoji] || FOLDER_ICON_PATHS['📁'];
   return '<svg class="sb-folder-ico-svg" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+}
+
+function micIconSvg(size){
+  size = size || 16;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+    + '<rect x="9" y="2" width="6" height="12" rx="3"/>'
+    + '<path d="M5 10a7 7 0 0 0 14 0"/>'
+    + '<path d="M12 17v4"/>'
+    + '<path d="M8 21h8"/>'
+    + '</svg>';
 }
 var ACCENT_COLORS = ['#F26158','#8B6BF2','#F0609E','#EF8A2E','#2FA968','#2AACC4','#38A8F0','#A99F8C'];
 
@@ -2222,7 +2232,7 @@ function renderCaptureBox(){
   html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
   html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
   html += '<span class="sb-spacer"></span>';
-  html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">🎙</button>';
+  html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">' + micIconSvg(18) + '</button>';
   html += '<button class="sb-btn-cta" id="btnFile">File</button>';
   html += '</div>';
 
