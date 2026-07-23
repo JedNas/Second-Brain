@@ -127,11 +127,16 @@ a{ color:var(--accent); }
 }
 
 /* ---------- App layout ---------- */
-#app{
-  display:flex; height:calc(100vh - 36px);
+#appShell{
+  display:flex; flex-direction:column; height:calc(100vh - 36px);
   background:var(--bg-elevated); border-radius:28px; overflow:hidden;
   box-shadow:var(--shadow-lg);
 }
+.sb-topheader{
+  flex-shrink:0; display:flex; align-items:center; gap:20px;
+  padding:14px 24px; border-bottom:1px solid var(--separator); background:var(--bg-elevated);
+}
+#app{ display:flex; flex:1; min-height:0; }
 
 .sb-sidebar{
   width:var(--sidebar-w);
@@ -144,6 +149,28 @@ a{ color:var(--accent); }
   height:100%;
   overflow-y:auto;
 }
+.sb-header-brand{
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+  font-size:var(--fs-lg); font-weight:700;
+}
+.sb-header-search{ flex:0 1 360px; min-width:140px; margin-bottom:0 !important; }
+.sb-header-right{ display:flex; align-items:center; gap:8px; margin-left:auto; flex-shrink:0; }
+.sb-profile-chip{
+  display:flex; align-items:center; gap:9px; flex-shrink:0;
+  border:1px solid var(--separator); background:var(--bg-elevated); box-shadow:var(--shadow-sm);
+  border-radius:999px; padding:5px 14px 5px 5px; cursor:pointer;
+}
+.sb-profile-chip:hover{ background:var(--overlay-1); }
+.sb-profile-avatar{
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg, var(--accent) 0%, #8B6BF2 100%); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:var(--fs-2xs); font-weight:700;
+}
+.sb-profile-text{ display:flex; flex-direction:column; align-items:flex-start; line-height:1.2; }
+.sb-profile-name{ font-size:var(--fs-sm); font-weight:600; color:var(--text); }
+.sb-profile-sub{ font-size:var(--fs-2xs); color:var(--text-tertiary); }
+.sb-profile-chevron{ color:var(--text-tertiary); font-size:12px; margin-left:2px; }
+
 .sb-brand{
   display:flex; align-items:center; justify-content:space-between;
   padding:2px 6px 18px 6px;
@@ -590,21 +617,20 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
 
 @media (max-width: 720px){
   body{ padding:0; }
-  #app{ border-radius:0; box-shadow:none; height:auto; min-height:100vh; overflow:visible; }
+  #appShell{ border-radius:0; box-shadow:none; height:auto; min-height:100vh; overflow:visible; }
   #app{ flex-direction:column; }
+  .sb-topheader{ padding:10px 12px; gap:10px; }
+  .sb-header-brand-label{ display:none; }
+  .sb-header-search{ flex:1; min-width:0; }
+  .sb-profile-text, .sb-profile-chevron{ display:none; }
+  .sb-profile-chip{ padding:5px; }
   .sb-main{ height:auto; overflow-y:visible; }
   .sb-page-head{ flex-direction:column; align-items:stretch; gap:10px; }
   .sb-page-actions{ width:100%; }
   .sb-page-actions button{ padding:9px 14px; font-size:var(--fs-sm); }
   .sb-chip{ padding:9px 14px; font-size:var(--fs-sm); }
   .sb-priority-chip{ padding:9px 14px; }
-  .sb-sidebar{
-    position:sticky; top:0; width:100%; height:auto; flex-direction:row; align-items:center;
-    overflow-x:auto; padding:10px 12px; z-index:40;
-  }
-  .sb-sidebar .sb-nav, .sb-sidebar .sb-folder-tree, .sb-sidebar .sb-new-folder-btn, .sb-sidebar .sb-save-indicator, .sb-sidebar .sb-sep{
-    display:none;
-  }
+  .sb-sidebar{ display:none; }
   .sb-mobile-menu-btn{ display:flex; }
   .sb-main{ padding:20px 16px 90px; }
   .sb-bottomnav{
@@ -634,16 +660,19 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
 
 /* ---------- Print ---------- */
 @media print{
-  .sb-sidebar, .sb-capture, .sb-search-wrap, .sb-page-actions, .sb-bottomnav, #toastRoot, .sb-note-actions, .sb-bulkbar{ display:none !important; }
+  .sb-sidebar, .sb-topheader, .sb-capture, .sb-search-wrap, .sb-page-actions, .sb-bottomnav, #toastRoot, .sb-note-actions, .sb-bulkbar{ display:none !important; }
   .sb-main{ padding:0; }
   body{ background:#fff; color:#000; }
 }
 </style>
 </head>
 <body>
-<div id="app">
-  <aside class="sb-sidebar" id="sidebar"></aside>
-  <main class="sb-main"><div class="sb-main-inner" id="main"><div class="sb-loading-placeholder">Loading your second brain…</div></div></main>
+<div id="appShell">
+  <header class="sb-topheader" id="topHeader"></header>
+  <div id="app">
+    <aside class="sb-sidebar" id="sidebar"></aside>
+    <main class="sb-main"><div class="sb-main-inner" id="main"><div class="sb-loading-placeholder">Loading your second brain…</div></div></main>
+  </div>
 </div>
 <nav class="sb-bottomnav" id="bottomnav"></nav>
 <div id="mobileDrawerRoot"></div>
@@ -914,7 +943,7 @@ function defaultState(){
     pendingVoiceNote: null,
     taskSortOrder: 'default',
     lastModifiedAt: 0,
-    settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'' }
+    settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
   };
 }
 
@@ -1853,6 +1882,7 @@ function renderSaveIndicator(){
    MAIN RENDER DISPATCH
    ============================================================ */
 function renderAll(){
+  renderTopHeader();
   renderSidebar();
   renderMain();
   renderBottomNav();
@@ -1875,28 +1905,6 @@ function renderSidebar(){
   var el = document.getElementById('sidebar');
   var overdue = countOverdueTasks();
   var html = '';
-  html += '<div class="sb-brand">';
-  html += '<div class="sb-brand-name"><svg class="sb-brand-icon" viewBox="0 0 140 140" role="img" aria-label="Second Brain logo">'
-    + '<path d="M45,50 C45,38 55,32 65,36 C70,30 82,30 87,38 C97,36 105,46 102,56 C110,62 108,76 98,80 C100,90 90,98 80,94 C76,102 62,102 58,94 C46,98 36,88 40,78 C32,72 34,60 45,50 Z" fill="none" stroke="var(--text-secondary)" stroke-width="4.5"/>'
-    + '<line x1="70" y1="66" x2="55" y2="50" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
-    + '<line x1="70" y1="66" x2="82" y2="46" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
-    + '<line x1="70" y1="66" x2="92" y2="66" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
-    + '<line x1="70" y1="66" x2="52" y2="76" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
-    + '<line x1="70" y1="66" x2="80" y2="86" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
-    + '<line x1="70" y1="66" x2="60" y2="90" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.65"/>'
-    + '<circle cx="70" cy="66" r="11" fill="var(--accent)"/>'
-    + '<circle cx="55" cy="50" r="6" fill="var(--text-secondary)"/>'
-    + '<circle cx="82" cy="46" r="6" fill="var(--text-secondary)"/>'
-    + '<circle cx="92" cy="66" r="6" fill="var(--text-secondary)"/>'
-    + '<circle cx="52" cy="76" r="6" fill="var(--text-secondary)"/>'
-    + '<circle cx="80" cy="86" r="6" fill="var(--text-secondary)"/>'
-    + '<circle cx="60" cy="90" r="6" fill="var(--text-secondary)"/>'
-    + '</svg>Second Brain</div>';
-  html += '<div style="display:flex;gap:2px;">';
-  html += '<button class="sb-icon-btn sb-mobile-menu-btn" id="btnMobileMenu" title="Folders">☰</button>';
-  html += '<button class="sb-icon-btn" id="btnSettings" title="Settings">⚙</button>';
-  html += '</div>';
-  html += '</div>';
 
   html += '<div class="sb-nav">';
   html += navItem('home','⌂','Home');
@@ -1970,9 +1978,6 @@ function renderBottomNav(){
    ============================================================ */
 function wireSidebarEvents(){
   var el = document.getElementById('sidebar');
-  el.querySelector('#btnSettings').addEventListener('click', openSettingsModal);
-  var mobileMenuBtn = el.querySelector('#btnMobileMenu');
-  if(mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileDrawer);
   el.querySelector('#btnNewFolderTop').addEventListener('click', function(){
     state.pendingParentId = null;
     openFolderEditModal(null);
@@ -2132,8 +2137,6 @@ function renderMain(){
   if(state.pendingReview.length){
     html += renderReviewPanel();
   }
-
-  html += renderSearchBox();
 
   html += renderBreadcrumb();
 
@@ -2622,18 +2625,60 @@ function flashNote(noteId){
 /* ============================================================
    SEARCH
    ============================================================ */
-function renderSearchBox(){
+function getInitials(name){
+  name = (name || '').trim();
+  if(!name) return '?';
+  var parts = name.split(/\s+/).slice(0,2);
+  return parts.map(function(p){ return p.charAt(0).toUpperCase(); }).join('');
+}
+
+function renderTopHeader(){
+  var el = document.getElementById('topHeader');
+  if(!el) return;
   var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  var html = '<div class="sb-topbar">';
-  html += '<div class="sb-search-wrap">';
+  var p = state.settings;
+  var html = '';
+
+  html += '<button class="sb-icon-btn sb-mobile-menu-btn" id="btnMobileMenu" title="Folders">☰</button>';
+
+  html += '<div class="sb-header-brand"><svg class="sb-brand-icon" viewBox="0 0 140 140" role="img" aria-label="Second Brain logo">'
+    + '<path d="M45,50 C45,38 55,32 65,36 C70,30 82,30 87,38 C97,36 105,46 102,56 C110,62 108,76 98,80 C100,90 90,98 80,94 C76,102 62,102 58,94 C46,98 36,88 40,78 C32,72 34,60 45,50 Z" fill="none" stroke="var(--text-secondary)" stroke-width="4.5"/>'
+    + '<line x1="70" y1="66" x2="55" y2="50" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
+    + '<line x1="70" y1="66" x2="82" y2="46" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
+    + '<line x1="70" y1="66" x2="92" y2="66" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="52" y2="76" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="80" y2="86" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="60" y2="90" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.65"/>'
+    + '<circle cx="70" cy="66" r="11" fill="var(--accent)"/>'
+    + '<circle cx="55" cy="50" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="82" cy="46" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="92" cy="66" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="52" cy="76" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="80" cy="86" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="60" cy="90" r="6" fill="var(--text-secondary)"/>'
+    + '</svg><span class="sb-header-brand-label">Second Brain</span></div>';
+
+  html += '<div class="sb-search-wrap sb-header-search">';
   html += '<span class="sb-search-ico">🔍</span>';
   html += '<input type="text" class="sb-search" id="searchInput" placeholder="Search your second brain…" value="' + escapeHtml(searchDraft) + '">';
   html += '<div id="searchResults"></div>';
   html += '</div>';
-  html += '<button class="sb-icon-btn sb-topbar-btn" id="btnQuickTheme" title="Toggle theme">' + (isDark ? '☀' : '🌙') + '</button>';
-  html += '<button class="sb-icon-btn sb-topbar-btn" id="btnSettingsTop" title="Settings">⚙</button>';
+
+  html += '<div class="sb-header-right">';
+  html += '<button class="sb-icon-btn" id="btnQuickTheme" title="Toggle theme">' + (isDark ? '☀' : '🌙') + '</button>';
+  html += '<button class="sb-icon-btn" id="btnSettingsTop" title="Settings">⚙</button>';
+  html += '<button class="sb-profile-chip" id="btnProfileMenu">';
+  html += '<span class="sb-profile-avatar">' + escapeHtml(getInitials(p.profileName)) + '</span>';
+  html += '<span class="sb-profile-text"><span class="sb-profile-name">' + escapeHtml(p.profileName || 'You') + '</span>';
+  if(p.profileSubtitle) html += '<span class="sb-profile-sub">' + escapeHtml(p.profileSubtitle) + '</span>';
+  html += '</span>';
+  html += '<span class="sb-profile-chevron">⌄</span>';
+  html += '</button>';
   html += '</div>';
-  return html;
+
+  el.innerHTML = html;
+  wireHeaderEvents();
+  wireSearchEvents();
 }
 
 function quickToggleTheme(){
@@ -2641,7 +2686,18 @@ function quickToggleTheme(){
   state.settings.theme = isDark ? 'light' : 'dark';
   applyThemeFromSettings();
   saveLocalSettingsOnly();
-  renderMain();
+  renderTopHeader();
+}
+
+function wireHeaderEvents(){
+  var mobileMenuBtn = document.getElementById('btnMobileMenu');
+  if(mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileDrawer);
+  var themeBtn = document.getElementById('btnQuickTheme');
+  if(themeBtn) themeBtn.addEventListener('click', quickToggleTheme);
+  var settingsBtn = document.getElementById('btnSettingsTop');
+  if(settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
+  var profileBtn = document.getElementById('btnProfileMenu');
+  if(profileBtn) profileBtn.addEventListener('click', openSettingsModal);
 }
 
 function wireSearchEvents(){
@@ -2687,13 +2743,6 @@ function wireSearchEvents(){
       resultsBox.innerHTML = '';
     }
   }, { once:true });
-}
-
-function wireTopbarEvents(){
-  var themeBtn = document.getElementById('btnQuickTheme');
-  if(themeBtn) themeBtn.addEventListener('click', quickToggleTheme);
-  var settingsBtn = document.getElementById('btnSettingsTop');
-  if(settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
 }
 
 function instantSearch(q){
@@ -3173,8 +3222,6 @@ function renderDigestView(){
 function wireMainEvents(){
   wireCaptureEvents();
   wireReviewEvents();
-  wireSearchEvents();
-  wireTopbarEvents();
   wireBreadcrumbEvents();
   wireNoteCardEvents();
   wireCommonPageEvents();
@@ -3917,6 +3964,10 @@ function openSettingsModal(){
   var s = state.settings;
   var html = '<h2>Settings</h2>';
 
+  html += '<div class="sb-field"><label>Profile name</label><input type="text" id="profileNameInput" placeholder="Your name" value="' + escapeHtml(s.profileName || '') + '" style="margin-bottom:8px;"></div>';
+  html += '<div class="sb-field"><label>Profile subtitle (optional)</label><input type="text" id="profileSubtitleInput" placeholder="e.g. a short tagline" value="' + escapeHtml(s.profileSubtitle || '') + '"></div>';
+  html += '<div class="sb-sep"></div>';
+
   html += '<div class="sb-field"><label>Gemini API Key (for AI features)</label>';
   html += '<p style="font-size:var(--fs-xs);color:var(--text-secondary);margin-bottom:8px;">Free, no credit card needed. Get one at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent);">aistudio.google.com/apikey</a>.</p>';
   html += '<input type="password" id="geminiApiKey" placeholder="Paste your Gemini API key…" value="' + escapeHtml(s.geminiApiKey || '') + '">';
@@ -3968,6 +4019,17 @@ function openSettingsModal(){
     saveState();
   });
 
+
+  el.querySelector('#profileNameInput').addEventListener('change', function(e){
+    state.settings.profileName = e.target.value.trim();
+    saveState();
+    renderTopHeader();
+  });
+  el.querySelector('#profileSubtitleInput').addEventListener('change', function(e){
+    state.settings.profileSubtitle = e.target.value.trim();
+    saveState();
+    renderTopHeader();
+  });
 
   el.querySelector('#geminiApiKey').addEventListener('change', function(e){
     state.settings.geminiApiKey = e.target.value.trim();
