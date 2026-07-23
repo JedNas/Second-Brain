@@ -146,12 +146,14 @@ a{ color:var(--accent); }
   width:var(--sidebar-w);
   flex-shrink:0;
   background:var(--bg-sidebar);
+  border-right:1px solid var(--separator);
   display:flex;
   flex-direction:column;
   padding:24px 16px;
-  height:100%;
+  height:calc(100vh - 36px);
   position:sticky;
   top:0;
+  align-self:flex-start;
   overflow-y:auto;
 }
 .sb-brand{
@@ -163,7 +165,7 @@ a{ color:var(--accent); }
   font-size:var(--fs-lg); font-weight:700;
 }
 .sb-brand-icon{
-  width:30px; height:30px; display:block; flex-shrink:0;
+  width:34px; height:34px; display:block; flex-shrink:0;
 }
 .sb-icon-btn{
   width:30px; height:30px; border-radius:50%;
@@ -230,7 +232,7 @@ a{ color:var(--accent); }
 }
 .sb-save-indicator.error{ color:var(--danger); font-weight:600; }
 
-.sb-main{ flex:1; min-width:0; padding:40px 48px; max-width:100vw; }
+.sb-main{ flex:1; min-width:0; padding:32px 40px; max-width:100vw; }
 .sb-main-inner{ max-width:840px; margin:0 auto; }
 
 /* ---------- Banners ---------- */
@@ -1753,20 +1755,20 @@ function renderSidebar(){
   var html = '';
   html += '<div class="sb-brand">';
   html += '<div class="sb-brand-name"><svg class="sb-brand-icon" viewBox="0 0 140 140" role="img" aria-label="Second Brain logo">'
-    + '<path d="M45,50 C45,38 55,32 65,36 C70,30 82,30 87,38 C97,36 105,46 102,56 C110,62 108,76 98,80 C100,90 90,98 80,94 C76,102 62,102 58,94 C46,98 36,88 40,78 C32,72 34,60 45,50 Z" fill="none" stroke="var(--text-tertiary)" stroke-width="4"/>'
-    + '<line x1="70" y1="66" x2="55" y2="50" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.7"/>'
-    + '<line x1="70" y1="66" x2="82" y2="46" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.7"/>'
-    + '<line x1="70" y1="66" x2="92" y2="66" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.6"/>'
-    + '<line x1="70" y1="66" x2="52" y2="76" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.6"/>'
-    + '<line x1="70" y1="66" x2="80" y2="86" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.6"/>'
-    + '<line x1="70" y1="66" x2="60" y2="90" stroke="var(--text-tertiary)" stroke-width="2.5" opacity="0.5"/>'
+    + '<path d="M45,50 C45,38 55,32 65,36 C70,30 82,30 87,38 C97,36 105,46 102,56 C110,62 108,76 98,80 C100,90 90,98 80,94 C76,102 62,102 58,94 C46,98 36,88 40,78 C32,72 34,60 45,50 Z" fill="none" stroke="var(--text-secondary)" stroke-width="4.5"/>'
+    + '<line x1="70" y1="66" x2="55" y2="50" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
+    + '<line x1="70" y1="66" x2="82" y2="46" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.85"/>'
+    + '<line x1="70" y1="66" x2="92" y2="66" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="52" y2="76" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="80" y2="86" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.75"/>'
+    + '<line x1="70" y1="66" x2="60" y2="90" stroke="var(--text-secondary)" stroke-width="2.5" opacity="0.65"/>'
     + '<circle cx="70" cy="66" r="11" fill="var(--accent)"/>'
-    + '<circle cx="55" cy="50" r="6" fill="var(--text-tertiary)"/>'
-    + '<circle cx="82" cy="46" r="6" fill="var(--text-tertiary)"/>'
-    + '<circle cx="92" cy="66" r="6" fill="var(--text-tertiary)"/>'
-    + '<circle cx="52" cy="76" r="6" fill="var(--text-tertiary)"/>'
-    + '<circle cx="80" cy="86" r="6" fill="var(--text-tertiary)"/>'
-    + '<circle cx="60" cy="90" r="6" fill="var(--text-tertiary)"/>'
+    + '<circle cx="55" cy="50" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="82" cy="46" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="92" cy="66" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="52" cy="76" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="80" cy="86" r="6" fill="var(--text-secondary)"/>'
+    + '<circle cx="60" cy="90" r="6" fill="var(--text-secondary)"/>'
     + '</svg>Second Brain</div>';
   html += '<div style="display:flex;gap:2px;">';
   html += '<button class="sb-icon-btn sb-mobile-menu-btn" id="btnMobileMenu" title="Folders">☰</button>';
