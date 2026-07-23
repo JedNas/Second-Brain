@@ -397,7 +397,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-page-actions button:hover{ background:var(--overlay-2); color:var(--text); }
 
 /* ---------- Stats strip ---------- */
-.sb-stats{ display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+.sb-stats{ display:flex; gap:10px; margin:20px 0; flex-wrap:wrap; }
 .sb-stat{
   flex:1; min-width:110px; background:var(--bg-elevated); border:1px solid var(--separator);
   border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow-sm);
@@ -408,7 +408,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 /* ---------- Ask your second brain (home chat) ---------- */
 .sb-brainchat{
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
-  padding:16px; box-shadow:var(--shadow-sm); margin:18px 0;
+  padding:16px; box-shadow:var(--shadow-sm); margin:20px 0;
 }
 .sb-brainchat-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .sb-brainchat-head h3{ font-size:var(--fs-md); }
@@ -439,7 +439,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-brainchat-input-row input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
 
 /* ---------- Section blocks ---------- */
-.sb-section{ margin:22px 0; }
+.sb-section{ margin:20px 0; }
 .sb-section-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .sb-home-more-hint{ text-align:center; color:var(--text-tertiary); font-size:var(--fs-xs); padding:14px 0 4px; }
 .sb-section-head h3{ font-size:var(--fs-base); color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
@@ -2932,8 +2932,7 @@ function renderHomeView(){
   var folderCount = flattenFolders().length;
   var streak = computeStreak();
 
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div>';
-  html += '<div class="sb-page-actions"><button data-select-mode="1">' + (state.selectMode ? 'Cancel select' : '☑ Select') + '</button></div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
 
   html += '<div class="sb-stats">';
   html += '<div class="sb-stat"><div class="val">' + all.length + '</div><div class="lbl">Notes</div></div>';
