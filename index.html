@@ -286,6 +286,12 @@ a{ color:var(--accent); }
 .sb-chip:hover{ background:var(--overlay-3); }
 .sb-chip.active{ background:var(--accent); color:#fff; }
 .sb-chip.recording{ background:var(--danger); color:#fff; }
+.sb-capture-plus{
+  border:1px solid var(--separator); font-size:20px; font-weight:400; line-height:1;
+}
+.sb-capture-voice{ border:1px solid var(--separator); font-size:15px; }
+.sb-capture-voice.recording{ background:var(--danger); border-color:var(--danger); color:#fff; animation:sbPulseRec 1.2s ease-in-out infinite; }
+@keyframes sbPulseRec{ 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 50%{ box-shadow:0 0 0 6px rgba(229,72,77,0.15); } }
 .sb-spacer{ flex:1; }
 .sb-btn-cta{
   border:none; background:linear-gradient(135deg, var(--accent) 0%, #8B6BF2 100%); color:#fff; font-weight:700; font-size:var(--fs-sm);
@@ -2213,11 +2219,10 @@ function renderCaptureBox(){
   }
 
   html += '<div class="sb-capture-row">';
-  html += '<button class="sb-chip' + (captureDraft.linkMode ? ' active' : '') + '" id="chipLink">🔗 Link</button>';
-  html += '<button class="sb-chip" id="chipImage">🖼 Image</button>';
+  html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
   html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
-  html += '<button class="sb-chip' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice">' + (captureDraft.voiceActive ? '🎙 Listening… tap to stop' : '🎙 Voice') + '</button>';
   html += '<span class="sb-spacer"></span>';
+  html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">🎙</button>';
   html += '<button class="sb-btn-cta" id="btnFile">File</button>';
   html += '</div>';
 
@@ -2257,16 +2262,23 @@ function wireCaptureEvents(){
       });
     });
   }
-  var chipLink = document.getElementById('chipLink');
-  if(chipLink) chipLink.addEventListener('click', function(){
-    captureDraft.linkMode = !captureDraft.linkMode;
-    if(!captureDraft.linkMode){ captureDraft.linkUrl = ''; state.pendingLinkPreview = null; }
-    renderMain();
-    if(captureDraft.linkMode){ var li = document.getElementById('linkUrlInput'); if(li) li.focus(); }
-  });
-  var chipImage = document.getElementById('chipImage');
   var fileInput = document.getElementById('imageFileInput');
-  if(chipImage) chipImage.addEventListener('click', function(){ fileInput.click(); });
+  var capturePlusBtn = document.getElementById('btnCapturePlus');
+  if(capturePlusBtn) capturePlusBtn.addEventListener('click', function(){
+    openFloatingMenu(capturePlusBtn, 'floatingCaptureMenu', [
+      { label: '🔗 Add link', action:'link' },
+      { label: '🖼 Add image', action:'image' }
+    ], function(action){
+      if(action === 'link'){
+        captureDraft.linkMode = !captureDraft.linkMode;
+        if(!captureDraft.linkMode){ captureDraft.linkUrl = ''; state.pendingLinkPreview = null; }
+        renderMain();
+        if(captureDraft.linkMode){ var li = document.getElementById('linkUrlInput'); if(li) li.focus(); }
+      } else if(action === 'image'){
+        fileInput.click();
+      }
+    });
+  });
   if(fileInput) fileInput.addEventListener('change', function(){
     var files = Array.prototype.slice.call(fileInput.files);
     var remaining = files.length;
@@ -3554,6 +3566,7 @@ function closeAllFloatingMenus(){
   closeFloatingMenu('floatingNoteMenu');
   closeFloatingMenu('floatingFolderMenu');
   closeFloatingMenu('floatingEmptyAreaMenu');
+  closeFloatingMenu('floatingCaptureMenu');
 }
 
 /* ---------- Note context menu (floating, opens on right-click or ⋯ button) ---------- */
