@@ -92,18 +92,6 @@ html[data-theme="dark"]{
   --accent-rgb: 245,131,180;
 }
 
-/* accent color overrides — chosen in Settings */
-html[data-accent="violet"]{ --accent:#8B6BF2; --accent-hover:#7452E0; --accent-soft:#EBE4FD; --accent-rgb:139,107,242; }
-html[data-accent="pink"]{ --accent:#F0609E; --accent-hover:#DE4685; --accent-soft:#FDE4EF; --accent-rgb:240,96,158; }
-html[data-accent="orange"]{ --accent:#EF8A2E; --accent-hover:#DA7418; --accent-soft:#FDEBD8; --accent-rgb:239,138,46; }
-html[data-accent="green"]{ --accent:#2FA968; --accent-hover:#22914F; --accent-soft:#DFF3E8; --accent-rgb:47,169,104; }
-html[data-accent="cyan"]{ --accent:#2AACC4; --accent-hover:#1D93A9; --accent-soft:#DEF3F6; --accent-rgb:42,172,196; }
-html[data-theme="dark"][data-accent="violet"]{ --accent:#A98CFF; --accent-hover:#BFA6FF; --accent-soft:rgba(169,140,255,0.16); }
-html[data-theme="dark"][data-accent="pink"]{ --accent:#F583B4; --accent-hover:#FF9EC6; --accent-soft:rgba(245,131,180,0.16); }
-html[data-theme="dark"][data-accent="orange"]{ --accent:#F5A25C; --accent-hover:#FFB578; --accent-soft:rgba(245,162,92,0.16); }
-html[data-theme="dark"][data-accent="green"]{ --accent:#57C98A; --accent-hover:#6EDBA0; --accent-soft:rgba(87,201,138,0.16); }
-html[data-theme="dark"][data-accent="cyan"]{ --accent:#5FC7DD; --accent-hover:#78D6EA; --accent-soft:rgba(95,199,221,0.16); }
-
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{
@@ -559,8 +547,6 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-history-item .h-meta{ display:flex; justify-content:space-between; align-items:center; }
 .sb-history-item .h-time{ color:var(--text-tertiary); font-size:var(--fs-2xs); }
 .sb-history-item button{ font-size:var(--fs-2xs); color:var(--accent); background:none; border:none; font-weight:600; }
-.sb-accent-swatch{ width:28px; height:28px; border-radius:50%; border:2px solid transparent; cursor:pointer; }
-.sb-accent-swatch.sel{ border-color:var(--text); }
 .sb-shortcut-row{ display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid var(--separator); font-size:var(--fs-sm); }
 .sb-shortcut-row:first-child{ border-top:none; }
 .sb-kbd{ background:var(--overlay-2); border-radius:6px; padding:2px 8px; font-size:var(--fs-xs); font-weight:600; }
@@ -813,7 +799,7 @@ function defaultState(){
     pendingLinkPreview: null,
     pendingVoiceNote: null,
     taskSortOrder: 'default',
-    settings: { theme:'light', lastExportAt:null, accentColor:'coral', syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'' }
+    settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'' }
   };
 }
 
@@ -995,7 +981,6 @@ function applyThemeFromSettings(){
   } else {
     document.documentElement.setAttribute('data-theme','light');
   }
-  document.documentElement.setAttribute('data-accent', state.settings.accentColor || 'coral');
 }
 
 function applySystemTheme(){
@@ -3826,13 +3811,6 @@ function openSettingsModal(){
   });
   html += '</select></div>';
 
-  html += '<div class="sb-field"><label>Accent color</label><div class="sb-color-grid" id="accentGrid">';
-  var accents = [['coral','#F26158'],['violet','#8B6BF2'],['pink','#F0609E'],['orange','#EF8A2E'],['green','#2FA968'],['cyan','#2AACC4']];
-  accents.forEach(function(a){
-    html += '<button type="button" class="sb-accent-swatch' + (s.accentColor===a[0]?' sel':'') + '" data-accent="' + a[0] + '" style="background:' + a[1] + '"></button>';
-  });
-  html += '</div></div>';
-
   html += '<div class="sb-sep"></div>';
   html += '<div class="sb-field"><label>Sync across devices</label>';
   html += '<p style="font-size:var(--fs-xs);color:var(--text-secondary);margin-bottom:8px;">Uses a free <a href="https://jsonbin.io" target="_blank" rel="noopener" style="color:var(--accent);">JSONBin.io</a> account as shared storage. Your notes will be stored on their servers, not just this device.</p>';
@@ -3872,14 +3850,7 @@ function openSettingsModal(){
     else document.documentElement.setAttribute('data-theme', e.target.value);
     saveState();
   });
-  Array.prototype.forEach.call(el.querySelectorAll('[data-accent]'), function(btn){
-    btn.addEventListener('click', function(){
-      state.settings.accentColor = btn.getAttribute('data-accent');
-      document.documentElement.setAttribute('data-accent', state.settings.accentColor);
-      saveState();
-      Array.prototype.forEach.call(el.querySelectorAll('[data-accent]'), function(b){ b.classList.toggle('sel', b===btn); });
-    });
-  });
+
 
   el.querySelector('#geminiApiKey').addEventListener('change', function(e){
     state.settings.geminiApiKey = e.target.value.trim();
@@ -3973,7 +3944,6 @@ function openSettingsModal(){
         state = defaultState();
         invalidateNotesCache();
         document.documentElement.setAttribute('data-theme','light');
-        document.documentElement.setAttribute('data-accent','coral');
         renderAll();
         closeModal();
       });
