@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Second Brain</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,17 +16,17 @@
    SECOND BRAIN — design system
    ============================================================ */
 :root{
-  --bg: #FBF6EC;
-  --bg-sidebar: #F5EEDF;
-  --bg-elevated: #FFFCF6;
-  --separator: #E9E0CD;
-  --text: #1A1714;
-  --text-secondary: #6E665A;
-  --text-tertiary: #A99F8C;
+  --bg: #F8F5FC;
+  --bg-sidebar: #F0EAFA;
+  --bg-elevated: #FFFFFF;
+  --separator: #E4DFF3;
+  --text: #201C33;
+  --text-secondary: #6E6485;
+  --text-tertiary: #A79BC4;
 
-  --accent: #F26158;
-  --accent-hover: #E24A40;
-  --accent-soft: #FCE6E3;
+  --accent: #D4537E;
+  --accent-hover: #B23F65;
+  --accent-soft: #FBEAF0;
   --blue: #38A8F0;
   --blue-soft: #E3F2FD;
 
@@ -37,35 +41,35 @@
   --radius: 16px;
   --radius-lg: 24px;
 
-  --overlay-1: rgba(60,45,30,0.04);
-  --overlay-2: rgba(60,45,30,0.07);
-  --overlay-3: rgba(60,45,30,0.11);
-  --overlay-4: rgba(60,45,30,0.16);
-  --overlay-5: rgba(60,45,30,0.24);
+  --overlay-1: rgba(36,27,61,0.04);
+  --overlay-2: rgba(36,27,61,0.07);
+  --overlay-3: rgba(36,27,61,0.11);
+  --overlay-4: rgba(36,27,61,0.16);
+  --overlay-5: rgba(36,27,61,0.24);
 
-  --shadow-sm: 0 1px 2px rgba(60,45,30,0.06), 0 1px 1px rgba(60,45,30,0.04);
-  --shadow-md: 0 4px 14px rgba(60,45,30,0.09), 0 2px 4px rgba(60,45,30,0.06);
-  --shadow-lg: 0 12px 32px rgba(60,45,30,0.14), 0 4px 10px rgba(60,45,30,0.08);
+  --shadow-sm: 0 1px 2px rgba(36,27,61,0.06), 0 1px 1px rgba(36,27,61,0.04);
+  --shadow-md: 0 4px 14px rgba(36,27,61,0.09), 0 2px 4px rgba(36,27,61,0.06);
+  --shadow-lg: 0 12px 32px rgba(36,27,61,0.14), 0 4px 10px rgba(36,27,61,0.08);
 
   --fs-2xs:11px; --fs-xs:12px; --fs-sm:13px; --fs-base:14px;
   --fs-md:15px; --fs-lg:17px; --fs-xl:21px; --fs-2xl:30px;
 
   --sidebar-w: 256px;
-  --accent-rgb: 242,97,88;
+  --accent-rgb: 212,83,126;
 }
 
 html[data-theme="dark"]{
-  --bg: #1B1815;
-  --bg-sidebar: #141110;
-  --bg-elevated: #262120;
-  --separator: #3A332C;
-  --text: #F3EEE6;
-  --text-secondary: #B3A99A;
-  --text-tertiary: #7D7364;
+  --bg: #241B3D;
+  --bg-sidebar: #1C1530;
+  --bg-elevated: #2E2453;
+  --separator: #3D325C;
+  --text: #F3EFFC;
+  --text-secondary: #B8AFDE;
+  --text-tertiary: #8478AC;
 
-  --accent: #F5726A;
-  --accent-hover: #FF897F;
-  --accent-soft: rgba(245,114,106,0.16);
+  --accent: #F583B4;
+  --accent-hover: #FF9EC6;
+  --accent-soft: rgba(245,131,180,0.16);
   --blue: #5EBBFB;
   --blue-soft: rgba(94,187,251,0.14);
 
@@ -76,16 +80,16 @@ html[data-theme="dark"]{
   --low: #4CD3A0;
   --low-soft: rgba(76,211,160,0.14);
 
-  --overlay-1: rgba(255,244,230,0.05);
-  --overlay-2: rgba(255,244,230,0.08);
-  --overlay-3: rgba(255,244,230,0.12);
-  --overlay-4: rgba(255,244,230,0.18);
-  --overlay-5: rgba(255,244,230,0.26);
+  --overlay-1: rgba(230,220,255,0.05);
+  --overlay-2: rgba(230,220,255,0.08);
+  --overlay-3: rgba(230,220,255,0.12);
+  --overlay-4: rgba(230,220,255,0.18);
+  --overlay-5: rgba(230,220,255,0.26);
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.25), 0 1px 1px rgba(0,0,0,0.2);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 6px 14px rgba(0,0,0,0.3);
-  --accent-rgb: 245,114,106;
+  --accent-rgb: 245,131,180;
 }
 
 /* accent color overrides — chosen in Settings */
