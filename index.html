@@ -3907,24 +3907,6 @@ function renderHomeView(){
 
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
 
-  html += renderTimelineStrip();
-
-  var todayBuckets = computeTaskBuckets();
-  var todayItems = todayBuckets.overdue.concat(todayBuckets.today);
-  html += '<div class="sb-section sb-today-card"><div class="sb-section-head"><h3>' + folderIconSvg('📅', 18) + ' Today</h3>';
-  if(todayBuckets.overdue.length){
-    html += '<span class="sb-today-overdue-count">' + todayBuckets.overdue.length + ' overdue</span>';
-  }
-  html += '</div>';
-  if(!todayItems.length){
-    html += emptyState('✅','All caught up','Nothing due today — nice work.');
-  } else {
-    html += '<div class="sb-note-list">';
-    todayItems.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
-    html += '</div>';
-  }
-  html += '</div>';
-
   html += renderBrainChat();
 
   var RECENT_LIMIT = 10;
