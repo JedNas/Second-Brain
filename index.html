@@ -3229,7 +3229,7 @@ function renderCaptureBox(){
   html += '<div class="sb-capture-row">';
   html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
   html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
-  html += '<input type="file" id="audioFileInput" style="display:none;">';
+  html += '<input type="file" id="audioFileInput" accept="*/*" style="display:none;">';
   html += '<span class="sb-spacer"></span>';
   html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">' + micIconSvg(18) + '</button>';
   html += '<button class="sb-btn-cta" id="btnFile">File</button>';
