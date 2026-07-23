@@ -202,6 +202,8 @@ a{ color:var(--accent); }
 }
 .sb-nav-item:hover, .sb-folder-row:hover{ background:var(--overlay-2); color:var(--text); }
 .sb-nav-item.active{ background:var(--accent-soft); color:var(--accent); font-weight:700; }
+.sb-nav-item.disabled{ opacity:0.35; cursor:not-allowed; }
+.sb-nav-item.disabled:hover{ background:transparent; }
 .sb-nav-item .sb-ico{ width:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .sb-nav-badge{
   margin-left:auto; background:var(--danger); color:#fff; font-size:var(--fs-2xs);
@@ -2734,11 +2736,8 @@ function renderSidebar(){
   html += '<div class="sb-nav">';
   html += navItem('home','🏠','Home');
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
-  html += navItem('horizons','🧭','Horizons');
   html += navItem('calendar','📅','Calendar');
-  html += navItem('plays','🏀','Plays');
-  html += navItem('themes','🏷️','Themes');
-  html += navItem('digest','✨','Review');
+  html += navItem('plays','🏀','Plays', null, true);
   html += navItem('trash','🗑','Trash');
   html += '</div>';
   html += '<div class="sb-sep"></div>';
@@ -2756,9 +2755,12 @@ function renderSidebar(){
   wireSidebarEvents();
 }
 
-function navItem(view, ico, label, badge){
+function navItem(view, ico, label, badge, disabled){
   var active = state.view === view ? ' active' : '';
   var badgeHtml = badge ? '<span class="sb-nav-badge">' + badge + '</span>' : '';
+  if(disabled){
+    return '<button class="sb-nav-item disabled" disabled title="Coming back later — parked for now"><span class="sb-ico">' + folderIconSvg(ico, 18) + '</span>' + label + badgeHtml + '</button>';
+  }
   return '<button class="sb-nav-item' + active + '" data-nav="' + view + '"><span class="sb-ico">' + folderIconSvg(ico, 18) + '</span>' + label + badgeHtml + '</button>';
 }
 
