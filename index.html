@@ -638,6 +638,59 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-resize-handle{
   position:absolute; left:0; right:0; bottom:0; height:6px; cursor:ns-resize;
 }
+
+/* ---------- Playbook ---------- */
+.sb-play-tile{ position:relative; }
+.sb-play-delete{
+  position:absolute; top:8px; right:8px; border:none; background:var(--overlay-2); color:var(--text-tertiary);
+  width:22px; height:22px; border-radius:50%; font-size:11px;
+}
+.sb-play-delete:hover{ background:var(--danger-soft); color:var(--danger); }
+
+.sb-play-editor{ position:fixed; inset:0; z-index:100; background:var(--bg); display:flex; flex-direction:column; }
+.sb-play-topbar{
+  display:flex; align-items:center; gap:12px; padding:12px 20px;
+  background:var(--bg-elevated); border-bottom:1px solid var(--separator); flex-shrink:0;
+}
+.sb-play-title-input{
+  flex:1; border:none; background:transparent; font-size:var(--fs-lg); font-weight:700; color:var(--text); outline:none;
+}
+.sb-play-court-toggle{ display:flex; gap:4px; }
+.sb-play-body{ flex:1; display:flex; min-height:0; overflow:hidden; }
+.sb-play-phases{
+  width:170px; flex-shrink:0; padding:14px; overflow-y:auto; border-right:1px solid var(--separator);
+}
+.sb-play-phases h4{ font-size:var(--fs-xs); color:var(--text-tertiary); text-transform:uppercase; margin-bottom:10px; }
+.sb-play-phase-item{
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  padding:9px 10px; border-radius:10px; border:1px solid var(--separator); margin-bottom:6px; font-size:var(--fs-sm); cursor:pointer;
+}
+.sb-play-phase-item.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:700; }
+.sb-play-phase-actions{ display:flex; flex-direction:column; gap:4px; margin-top:8px; }
+.sb-play-canvas-wrap{ flex:1; min-width:0; display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; background:var(--bg); }
+.sb-play-canvas{ max-width:100%; max-height:100%; box-shadow:var(--shadow-lg); border-radius:12px; overflow:hidden; }
+.sb-play-canvas svg{ display:block; width:auto; height:80vh; max-width:70vw; touch-action:none; }
+.sb-play-toolbar{
+  width:230px; flex-shrink:0; padding:14px; overflow-y:auto; border-left:1px solid var(--separator); background:var(--bg-elevated);
+}
+.sb-play-toolbar h4{ font-size:var(--fs-xs); color:var(--text-tertiary); text-transform:uppercase; margin:14px 0 8px; }
+.sb-play-toolbar h4:first-child{ margin-top:0; }
+.sb-play-tool-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.sb-play-tool-grid.actions{ grid-template-columns:repeat(2,1fr); }
+.sb-play-tool-btn{
+  border:1px solid var(--separator); background:var(--bg-elevated); border-radius:8px; padding:8px 4px; font-size:var(--fs-xs); font-weight:700;
+}
+.sb-play-tool-btn.o{ color:#241B3D; }
+.sb-play-tool-btn.x{ color:#E5484D; }
+.sb-play-tool-btn.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.sb-play-hint{ font-size:9px; color:var(--text-tertiary); line-height:1.5; margin-top:12px; }
+
+.po-obj{ cursor:grab; }
+.po-obj.selected circle, .po-obj.selected rect, .po-obj.selected ellipse, .po-obj.selected line, .po-obj.selected path{
+  filter:drop-shadow(0 0 0 3px var(--accent));
+  outline:2px dashed var(--accent);
+}
+
 .sb-badge-due.overdue{ background:var(--danger-soft); color:var(--danger); font-weight:600; }
 .sb-note-actions{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
 .sb-note-menu-btn{ width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); }
@@ -1090,6 +1143,8 @@ function defaultState(){
     calendarBlocks: [],
     calendarView: 'day',
     calendarDate: todayISO(),
+    plays: [],
+    editingPlayId: null,
     horizonsScale: 'week',
     lastModifiedAt: 0,
     settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
@@ -1221,7 +1276,7 @@ function pullRemoteState(){
         // Keep the local copy and push it up instead of letting stale cloud data win.
         return remoteSyncSet({
           folders: state.folders, trash: state.trash, settings: state.settings,
-          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, lastModifiedAt: localModifiedAt
+          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, lastModifiedAt: localModifiedAt
         }).catch(function(){});
       }
       remote.pendingImages = [];
@@ -1238,7 +1293,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, lastModifiedAt: state.lastModifiedAt
+        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1302,6 +1357,7 @@ function saveLocalSettingsOnly(){
     taskSortOrder: state.taskSortOrder,
     goals: state.goals,
     calendarBlocks: state.calendarBlocks,
+    plays: state.plays,
     lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
@@ -1317,6 +1373,7 @@ function saveState(){
     taskSortOrder: state.taskSortOrder,
     goals: state.goals,
     calendarBlocks: state.calendarBlocks,
+    plays: state.plays,
     lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
@@ -1662,6 +1719,557 @@ function minutesToLabel(min){
   var ampm = h < 12 ? 'AM' : 'PM';
   var h12 = h % 12; if(h12 === 0) h12 = 12;
   return h12 + (m ? ':' + (m<10?'0'+m:m) : '') + ampm;
+}
+
+/* ============================================================
+   PLAYBOOK (basketball play/drill diagrammer)
+   ============================================================ */
+var PLAY_COURT = { half:{ w:500, h:470 }, full:{ w:500, h:940 } };
+
+function createPlay(){
+  return {
+    id: makeId('play'),
+    title: 'Untitled Play',
+    courtType: 'half',
+    phases: [ { id: makeId('ph'), objects: [] } ],
+    currentPhaseIndex: 0,
+    createdAt: Date.now()
+  };
+}
+function getPlayById(id){
+  return state.plays.find(function(p){ return p.id === id; });
+}
+function deletePlay(id){
+  state.plays = state.plays.filter(function(p){ return p.id !== id; });
+  saveState();
+}
+function currentPhaseOf(play){
+  return play.phases[play.currentPhaseIndex] || play.phases[0];
+}
+function addPhase(play, clone){
+  var newObjs = clone ? JSON.parse(JSON.stringify(currentPhaseOf(play).objects)) : [];
+  play.phases.push({ id: makeId('ph'), objects: newObjs });
+  play.currentPhaseIndex = play.phases.length - 1;
+  saveState();
+}
+function deletePhase(play, index){
+  if(play.phases.length <= 1) return;
+  play.phases.splice(index, 1);
+  if(play.currentPhaseIndex >= play.phases.length) play.currentPhaseIndex = play.phases.length - 1;
+  saveState();
+}
+
+function courtUnitPaths(){
+  return ''
+    + '<rect x="2" y="2" width="496" height="466"/>'
+    + '<circle cx="250" cy="2" r="60"/>'
+    + '<rect x="175" y="310" width="150" height="160"/>'
+    + '<circle cx="250" cy="310" r="60"/>'
+    + '<line x1="220" y1="428" x2="280" y2="428"/>'
+    + '<circle cx="250" cy="440" r="7.5"/>'
+    + '<path d="M 220,470 A 30,30 0 0 1 280,470" fill="none"/>'
+    + '<line x1="30" y1="470" x2="30" y2="330"/>'
+    + '<line x1="470" y1="470" x2="470" y2="330"/>'
+    + '<path d="M 30,330 A 238,238 0 0 0 470,330" fill="none"/>';
+}
+function courtBackgroundSvg(courtType){
+  var dims = PLAY_COURT[courtType] || PLAY_COURT.half;
+  var inner;
+  if(courtType === 'full'){
+    inner = '<g transform="translate(0,470)">' + courtUnitPaths() + '</g>'
+      + '<g transform="translate(0,470) scale(1,-1)">' + courtUnitPaths() + '</g>';
+  } else {
+    inner = courtUnitPaths();
+  }
+  return '<svg class="sb-court-bg" viewBox="0 0 ' + dims.w + ' ' + dims.h + '" preserveAspectRatio="xMidYMid meet">'
+    + '<rect x="0" y="0" width="' + dims.w + '" height="' + dims.h + '" fill="#E8C79A"/>'
+    + '<g fill="none" stroke="#fff" stroke-width="2.5">' + inner + '</g>'
+    + '</svg>';
+}
+
+function wavyPath(x1,y1,x2,y2){
+  var dx = x2-x1, dy = y2-y1;
+  var len = Math.sqrt(dx*dx+dy*dy) || 1;
+  var segs = Math.max(4, Math.round(len/16));
+  var nx = -dy/len, ny = dx/len;
+  var amp = 6;
+  var d = 'M ' + x1 + ',' + y1 + ' ';
+  for(var i=1;i<=segs;i++){
+    var t = i/segs;
+    var px = x1+dx*t, py = y1+dy*t;
+    var off = (i%2===0 ? amp : -amp);
+    if(i===segs) off = 0;
+    d += 'L ' + (px+nx*off) + ',' + (py+ny*off) + ' ';
+  }
+  return d;
+}
+
+function playerObjSvg(obj){
+  if(obj.team === 'x'){
+    return '<g class="po-obj po-player" data-obj-id="' + obj.id + '" transform="translate(' + obj.x + ',' + obj.y + ')">'
+      + '<line x1="-9" y1="-9" x2="9" y2="9" stroke="#E5484D" stroke-width="3"/>'
+      + '<line x1="9" y1="-9" x2="-9" y2="9" stroke="#E5484D" stroke-width="3"/>'
+      + '<text x="0" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#E5484D">' + escapeHtml(obj.number) + '</text>'
+      + '</g>';
+  }
+  return '<g class="po-obj po-player" data-obj-id="' + obj.id + '" transform="translate(' + obj.x + ',' + obj.y + ')">'
+    + '<circle r="13" fill="#fff" stroke="#241B3D" stroke-width="2.5"/>'
+    + '<text x="0" y="5" text-anchor="middle" font-size="13" font-weight="700" fill="#241B3D">' + escapeHtml(obj.number) + '</text>'
+    + '</g>';
+}
+function actionObjSvg(obj){
+  var d = obj.kind === 'dribble' ? wavyPath(obj.x1,obj.y1,obj.x2,obj.y2) : ('M ' + obj.x1 + ',' + obj.y1 + ' L ' + obj.x2 + ',' + obj.y2);
+  var dash = obj.kind === 'pass' ? ' stroke-dasharray="7,5"' : '';
+  var marker = obj.kind === 'screen' ? '' : ' marker-end="url(#sbArrowhead)"';
+  var extra = '';
+  if(obj.kind === 'screen'){
+    var angle = Math.atan2(obj.y2-obj.y1, obj.x2-obj.x1);
+    var perp = angle + Math.PI/2;
+    var capLen = 11;
+    var cx1 = obj.x2 + Math.cos(perp)*capLen, cy1 = obj.y2 + Math.sin(perp)*capLen;
+    var cx2 = obj.x2 - Math.cos(perp)*capLen, cy2 = obj.y2 - Math.sin(perp)*capLen;
+    extra = '<line x1="' + cx1 + '" y1="' + cy1 + '" x2="' + cx2 + '" y2="' + cy2 + '" stroke="#241B3D" stroke-width="3"/>';
+  }
+  return '<g class="po-obj po-action" data-obj-id="' + obj.id + '">'
+    + '<path d="' + d + '" fill="none" stroke="#241B3D" stroke-width="2.5"' + dash + marker + '/>' + extra
+    + '</g>';
+}
+function textObjSvg(obj){
+  return '<text class="po-obj po-text" data-obj-id="' + obj.id + '" x="' + obj.x + '" y="' + obj.y + '" font-size="14" font-weight="600" fill="#241B3D">' + escapeHtml(obj.content) + '</text>';
+}
+function shapeObjSvg(obj){
+  if(obj.kind === 'rect'){
+    return '<rect class="po-obj po-shape" data-obj-id="' + obj.id + '" x="' + Math.min(obj.x1,obj.x2) + '" y="' + Math.min(obj.y1,obj.y2) + '" width="' + Math.abs(obj.x2-obj.x1) + '" height="' + Math.abs(obj.y2-obj.y1) + '" fill="none" stroke="#241B3D" stroke-width="2"/>';
+  }
+  if(obj.kind === 'circle'){
+    var rx = Math.abs(obj.x2-obj.x1)/2, ry = Math.abs(obj.y2-obj.y1)/2;
+    var cx = (obj.x1+obj.x2)/2, cy = (obj.y1+obj.y2)/2;
+    return '<ellipse class="po-obj po-shape" data-obj-id="' + obj.id + '" cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="none" stroke="#241B3D" stroke-width="2"/>';
+  }
+  return '<line class="po-obj po-shape" data-obj-id="' + obj.id + '" x1="' + obj.x1 + '" y1="' + obj.y1 + '" x2="' + obj.x2 + '" y2="' + obj.y2 + '" stroke="#241B3D" stroke-width="2"/>';
+}
+function renderPlayObject(obj){
+  if(obj.type === 'player') return playerObjSvg(obj);
+  if(obj.type === 'action') return actionObjSvg(obj);
+  if(obj.type === 'text') return textObjSvg(obj);
+  if(obj.type === 'shape') return shapeObjSvg(obj);
+  return '';
+}
+
+/* ---------- Playbook library ---------- */
+function renderPlaysView(){
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🏀 Plays</div></div>';
+  html += '<div class="sb-page-actions"><button class="sb-btn-cta" id="btnNewPlay">+ New Play</button></div></div>';
+  html += '<div class="sb-page-desc">Draw plays and drills, save them to your library.</div>';
+
+  if(!state.plays.length){
+    html += emptyState('🏀','No plays yet','Click "New Play" to draw your first one.');
+  } else {
+    html += '<div class="sb-folder-grid" style="margin-top:14px;">';
+    state.plays.slice().sort(function(a,b){ return b.createdAt - a.createdAt; }).forEach(function(p){
+      html += '<button class="sb-folder-tile sb-play-tile" data-play-open="' + p.id + '">';
+      html += '<span class="ico">' + folderIconSvg('🏀', 20) + '</span>';
+      html += '<div><div class="name">' + escapeHtml(p.title) + '</div><div class="cnt">' + p.phases.length + ' phase' + (p.phases.length===1?'':'s') + ' · ' + (p.courtType==='full'?'Full court':'Half court') + '</div></div>';
+      html += '<button class="sb-play-delete" data-play-delete="' + p.id + '" title="Delete">✕</button>';
+      html += '</button>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+function wirePlaysViewEvents(){
+  var newBtn = document.getElementById('btnNewPlay');
+  if(newBtn) newBtn.addEventListener('click', function(){
+    var p = createPlay();
+    state.plays.push(p);
+    saveState();
+    state.editingPlayId = p.id;
+    navigateTo('playEditor');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-play-open]'), function(btn){
+    btn.addEventListener('click', function(e){
+      if(e.target.closest('[data-play-delete]')) return;
+      state.editingPlayId = btn.getAttribute('data-play-open');
+      navigateTo('playEditor');
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-play-delete]'), function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var id = btn.getAttribute('data-play-delete');
+      openConfirmModal('Delete this play?', 'This cannot be undone.', function(){
+        deletePlay(id);
+        renderMain();
+      });
+    });
+  });
+}
+
+/* ---------- Play editor ---------- */
+var playEditorTool = null; // { category:'player', team, number } | { category:'action', kind } | { category:'shape', kind }
+var playEditorSelectedId = null;
+
+var PLAY_ACTION_DEFS = [
+  { kind:'dribble', label:'Dribble' },
+  { kind:'pass', label:'Pass' },
+  { kind:'cut', label:'Cut' },
+  { kind:'screen', label:'Screen' }
+];
+var PLAY_MISC_DEFS = [
+  { kind:'text', label:'T' },
+  { kind:'rect', label:'▭' },
+  { kind:'circle', label:'◯' },
+  { kind:'line', label:'—' }
+];
+
+function renderPlayEditorView(){
+  var play = getPlayById(state.editingPlayId);
+  if(!play){ return '<div class="sb-page-head"><div class="sb-page-title">Play not found</div></div>'; }
+  var phase = currentPhaseOf(play);
+
+  var html = '<div class="sb-play-editor">';
+
+  html += '<div class="sb-play-topbar">';
+  html += '<button class="sb-btn-text" id="btnPlayClose">✕ Close</button>';
+  html += '<input type="text" id="playTitleInput" class="sb-play-title-input" value="' + escapeHtml(play.title) + '">';
+  html += '<div class="sb-play-court-toggle">';
+  html += '<button class="sb-horizon-tab' + (play.courtType==='half'?' active':'') + '" data-play-court="half">Half</button>';
+  html += '<button class="sb-horizon-tab' + (play.courtType==='full'?' active':'') + '" data-play-court="full">Full</button>';
+  html += '</div>';
+  html += '<button class="sb-btn-cta" id="btnPlayDone">Save Play</button>';
+  html += '</div>';
+
+  html += '<div class="sb-play-body">';
+
+  html += '<div class="sb-play-phases">';
+  html += '<h4>Phases</h4>';
+  play.phases.forEach(function(ph, i){
+    html += '<div class="sb-play-phase-item' + (i===play.currentPhaseIndex?' active':'') + '" data-play-phase="' + i + '">';
+    html += '<span>Phase ' + (i+1) + '</span>';
+    if(play.phases.length > 1) html += '<button class="sb-goal-delete" data-play-phase-delete="' + i + '" title="Delete phase">✕</button>';
+    html += '</div>';
+  });
+  html += '<div class="sb-play-phase-actions">';
+  html += '<button class="sb-btn-text" id="btnPhaseAdd">+ New</button>';
+  html += '<button class="sb-btn-text" id="btnPhaseClone">⧉ Clone</button>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="sb-play-canvas-wrap">';
+  html += '<div class="sb-play-canvas" id="playCanvasHolder">';
+  html += buildPlayCanvasSvg(play, phase);
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="sb-play-toolbar">';
+  html += '<h4>Players</h4><div class="sb-play-tool-grid">';
+  ['1','2','3','4','5','?'].forEach(function(n){
+    html += '<button class="sb-play-tool-btn o' + (isToolActive('player','o',n)?' active':'') + '" data-tool-player-o="' + n + '">' + n + '</button>';
+  });
+  ['1','2','3','4','5','?'].forEach(function(n){
+    html += '<button class="sb-play-tool-btn x' + (isToolActive('player','x',n)?' active':'') + '" data-tool-player-x="' + n + '">X' + n + '</button>';
+  });
+  html += '</div>';
+
+  html += '<h4>Actions</h4><div class="sb-play-tool-grid actions">';
+  PLAY_ACTION_DEFS.forEach(function(a){
+    html += '<button class="sb-play-tool-btn action' + (isToolActive('action',null,null,a.kind)?' active':'') + '" data-tool-action="' + a.kind + '">' + a.label + '</button>';
+  });
+  html += '</div>';
+
+  html += '<h4>Misc</h4><div class="sb-play-tool-grid actions">';
+  PLAY_MISC_DEFS.forEach(function(m){
+    html += '<button class="sb-play-tool-btn misc' + (isToolActive('shape',null,null,m.kind)?' active':'') + '" data-tool-shape="' + m.kind + '">' + m.label + '</button>';
+  });
+  html += '</div>';
+
+  html += '<button class="sb-btn-text" id="btnToolClear" style="margin-top:12px;width:100%;">✋ Select / Move</button>';
+  html += '<div class="sb-play-hint">Click a tool, then click (or drag for lines) on the court. Click an object in Select mode + press Delete to remove it.</div>';
+  html += '</div>';
+
+  html += '</div>'; // body
+  html += '</div>'; // editor
+  return html;
+}
+
+function isToolActive(category, team, number, kind){
+  if(!playEditorTool || playEditorTool.category !== category) return false;
+  if(category === 'player') return playEditorTool.team === team && playEditorTool.number === number;
+  return playEditorTool.kind === kind;
+}
+
+function buildPlayCanvasSvg(play, phase){
+  var dims = PLAY_COURT[play.courtType] || PLAY_COURT.half;
+  var objectsHtml = phase.objects.map(function(o){
+    var cls = (playEditorSelectedId === o.id) ? ' selected' : '';
+    return renderPlayObject(o).replace('class="po-obj', 'class="po-obj' + cls);
+  }).join('');
+  return '<svg id="playSvg" viewBox="0 0 ' + dims.w + ' ' + dims.h + '" preserveAspectRatio="xMidYMid meet">'
+    + '<defs><marker id="sbArrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#241B3D"/></marker></defs>'
+    + '<rect x="0" y="0" width="' + dims.w + '" height="' + dims.h + '" fill="#E8C79A"/>'
+    + '<g fill="none" stroke="#fff" stroke-width="2.5">' + (play.courtType==='full'
+        ? ('<g transform="translate(0,470)">' + courtUnitPaths() + '</g><g transform="translate(0,470) scale(1,-1)">' + courtUnitPaths() + '</g>')
+        : courtUnitPaths()) + '</g>'
+    + '<g id="playObjectsLayer">' + objectsHtml + '</g>'
+    + '</svg>';
+}
+
+function svgLocalPoint(svgEl, clientX, clientY){
+  var pt = svgEl.createSVGPoint();
+  pt.x = clientX; pt.y = clientY;
+  var ctm = svgEl.getScreenCTM();
+  if(!ctm) return { x:0, y:0 };
+  var loc = pt.matrixTransform(ctm.inverse());
+  return { x: loc.x, y: loc.y };
+}
+
+function openPlayTextModal(onConfirm){
+  var el = openModal(
+    '<h2>Add label</h2>' +
+    '<div class="sb-field"><input type="text" id="playTextInput" placeholder="e.g. Coach, Cone, Screen…"></div>' +
+    '<div class="sb-modal-foot"><button class="sb-btn-text" id="playTextCancel">Cancel</button><button class="sb-btn-cta" id="playTextSave">Add</button></div>'
+  );
+  var input = el.querySelector('#playTextInput');
+  input.focus();
+  el.querySelector('#playTextCancel').addEventListener('click', closeModal);
+  el.querySelector('#playTextSave').addEventListener('click', function(){
+    var val = input.value.trim();
+    if(!val) return;
+    closeModal();
+    onConfirm(val);
+  });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); el.querySelector('#playTextSave').click(); }
+  });
+}
+
+function redrawPlayCanvas(){
+  var play = getPlayById(state.editingPlayId);
+  if(!play) return;
+  var holder = document.getElementById('playCanvasHolder');
+  if(!holder) return;
+  holder.innerHTML = buildPlayCanvasSvg(play, currentPhaseOf(play));
+  wirePlayCanvasEvents();
+}
+
+function wirePlayEditorEvents(){
+  var play = getPlayById(state.editingPlayId);
+  if(!play){ return; }
+
+  var closeBtn = document.getElementById('btnPlayClose');
+  if(closeBtn) closeBtn.addEventListener('click', function(){
+    playEditorTool = null; playEditorSelectedId = null;
+    state.editingPlayId = null;
+    navigateTo('plays');
+  });
+  var doneBtn = document.getElementById('btnPlayDone');
+  if(doneBtn) doneBtn.addEventListener('click', function(){
+    playEditorTool = null; playEditorSelectedId = null;
+    state.editingPlayId = null;
+    navigateTo('plays');
+    showToast('Play saved.');
+  });
+  var titleInput = document.getElementById('playTitleInput');
+  if(titleInput) titleInput.addEventListener('change', function(){
+    play.title = titleInput.value.trim() || 'Untitled Play';
+    saveState();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-play-court]'), function(btn){
+    btn.addEventListener('click', function(){
+      play.courtType = btn.getAttribute('data-play-court');
+      saveState();
+      renderMain();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-play-phase]'), function(btn){
+    btn.addEventListener('click', function(e){
+      if(e.target.closest('[data-play-phase-delete]')) return;
+      play.currentPhaseIndex = parseInt(btn.getAttribute('data-play-phase'), 10);
+      playEditorSelectedId = null;
+      saveState();
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-play-phase-delete]'), function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      deletePhase(play, parseInt(btn.getAttribute('data-play-phase-delete'), 10));
+      renderMain();
+    });
+  });
+  var addPhaseBtn = document.getElementById('btnPhaseAdd');
+  if(addPhaseBtn) addPhaseBtn.addEventListener('click', function(){ addPhase(play, false); renderMain(); });
+  var clonePhaseBtn = document.getElementById('btnPhaseClone');
+  if(clonePhaseBtn) clonePhaseBtn.addEventListener('click', function(){ addPhase(play, true); renderMain(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tool-player-o]'), function(btn){
+    btn.addEventListener('click', function(){
+      playEditorTool = { category:'player', team:'o', number: btn.getAttribute('data-tool-player-o') };
+      playEditorSelectedId = null;
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tool-player-x]'), function(btn){
+    btn.addEventListener('click', function(){
+      playEditorTool = { category:'player', team:'x', number: btn.getAttribute('data-tool-player-x') };
+      playEditorSelectedId = null;
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tool-action]'), function(btn){
+    btn.addEventListener('click', function(){
+      playEditorTool = { category:'action', kind: btn.getAttribute('data-tool-action') };
+      playEditorSelectedId = null;
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tool-shape]'), function(btn){
+    btn.addEventListener('click', function(){
+      playEditorTool = { category:'shape', kind: btn.getAttribute('data-tool-shape') };
+      playEditorSelectedId = null;
+      renderMain();
+    });
+  });
+  var clearToolBtn = document.getElementById('btnToolClear');
+  if(clearToolBtn) clearToolBtn.addEventListener('click', function(){
+    playEditorTool = null;
+    renderMain();
+  });
+
+  wirePlayCanvasEvents();
+
+  document.removeEventListener('keydown', playEditorKeyHandler);
+  document.addEventListener('keydown', playEditorKeyHandler);
+}
+
+function playEditorKeyHandler(e){
+  if(state.view !== 'playEditor') return;
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if((e.key === 'Delete' || e.key === 'Backspace') && playEditorSelectedId){
+    var play = getPlayById(state.editingPlayId);
+    if(play){
+      var phase = currentPhaseOf(play);
+      phase.objects = phase.objects.filter(function(o){ return o.id !== playEditorSelectedId; });
+      playEditorSelectedId = null;
+      saveState();
+      renderMain();
+    }
+  }
+}
+
+function wirePlayCanvasEvents(){
+  var svg = document.getElementById('playSvg');
+  if(!svg) return;
+  var play = getPlayById(state.editingPlayId);
+  if(!play) return;
+  var phase = currentPhaseOf(play);
+
+  svg.addEventListener('mousedown', function(e){
+    var pt = svgLocalPoint(svg, e.clientX, e.clientY);
+    var hitObj = e.target.closest('.po-obj');
+
+    if(!playEditorTool){
+      if(hitObj){
+        var objId = hitObj.getAttribute('data-obj-id');
+        var obj = phase.objects.find(function(o){ return o.id === objId; });
+        if(obj && obj.type === 'player'){
+          playEditorSelectedId = objId;
+          var startX = e.clientX, startY = e.clientY;
+          var origX = obj.x, origY = obj.y;
+          var moved = false;
+          function onMove(e2){
+            var p2 = svgLocalPoint(svg, e2.clientX, e2.clientY);
+            var p1 = svgLocalPoint(svg, startX, startY);
+            var dx = p2.x - p1.x, dy = p2.y - p1.y;
+            if(Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+            hitObj.setAttribute('transform', 'translate(' + (origX+dx) + ',' + (origY+dy) + ')');
+          }
+          function onUp(e2){
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            if(moved){
+              var p2 = svgLocalPoint(svg, e2.clientX, e2.clientY);
+              var p1 = svgLocalPoint(svg, startX, startY);
+              obj.x = origX + (p2.x - p1.x);
+              obj.y = origY + (p2.y - p1.y);
+              saveState();
+            }
+            renderMain();
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        } else {
+          playEditorSelectedId = objId;
+          renderMain();
+        }
+      } else {
+        playEditorSelectedId = null;
+        renderMain();
+      }
+      return;
+    }
+
+    if(playEditorTool.category === 'player'){
+      phase.objects.push({ id: makeId('po'), type:'player', team: playEditorTool.team, number: playEditorTool.number, x: pt.x, y: pt.y });
+      saveState();
+      redrawPlayCanvas();
+      return;
+    }
+
+    if(playEditorTool.category === 'shape' && playEditorTool.kind === 'text'){
+      openPlayTextModal(function(val){
+        phase.objects.push({ id: makeId('po'), type:'text', x: pt.x, y: pt.y, content: val });
+        saveState();
+        redrawPlayCanvas();
+      });
+      return;
+    }
+
+    // line-based tools: action or shape (rect/circle/line) — drag from start to end
+    var startPt = pt;
+    var layer = document.getElementById('playObjectsLayer');
+    var previewId = 'sbPlayPreview';
+    function drawPreview(curPt){
+      var old = document.getElementById(previewId);
+      if(old) old.remove();
+      var tempObj = { x1:startPt.x, y1:startPt.y, x2:curPt.x, y2:curPt.y };
+      var svgStr;
+      if(playEditorTool.category === 'action'){
+        svgStr = actionObjSvg(Object.assign({ id:'preview', kind: playEditorTool.kind }, tempObj));
+      } else {
+        svgStr = shapeObjSvg(Object.assign({ id:'preview', kind: playEditorTool.kind }, tempObj));
+      }
+      var wrap = document.createElementNS('http://www.w3.org/2000/svg','g');
+      wrap.setAttribute('id', previewId);
+      wrap.setAttribute('opacity', '0.6');
+      wrap.innerHTML = svgStr;
+      layer.appendChild(wrap);
+    }
+    drawPreview(startPt);
+    function onMove(e2){
+      drawPreview(svgLocalPoint(svg, e2.clientX, e2.clientY));
+    }
+    function onUp(e2){
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      var old = document.getElementById(previewId);
+      if(old) old.remove();
+      var endPt = svgLocalPoint(svg, e2.clientX, e2.clientY);
+      var dist = Math.hypot(endPt.x-startPt.x, endPt.y-startPt.y);
+      if(dist < 6){ return; }
+      if(playEditorTool.category === 'action'){
+        phase.objects.push({ id: makeId('po'), type:'action', kind: playEditorTool.kind, x1:startPt.x, y1:startPt.y, x2:endPt.x, y2:endPt.y });
+      } else {
+        phase.objects.push({ id: makeId('po'), type:'shape', kind: playEditorTool.kind, x1:startPt.x, y1:startPt.y, x2:endPt.x, y2:endPt.y });
+      }
+      saveState();
+      redrawPlayCanvas();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 function computeTaskBuckets(){
@@ -2128,6 +2736,7 @@ function renderSidebar(){
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
   html += navItem('horizons','🧭','Horizons');
   html += navItem('calendar','📅','Calendar');
+  html += navItem('plays','🏀','Plays');
   html += navItem('themes','🏷️','Themes');
   html += navItem('digest','✨','Review');
   html += navItem('trash','🗑','Trash');
@@ -2354,6 +2963,13 @@ var recognitionInstance = null;
 function renderMain(){
   var html = '';
 
+  if(state.view === 'playEditor'){
+    html = renderPlayEditorView();
+    document.getElementById('main').innerHTML = html;
+    wirePlayEditorEvents();
+    return;
+  }
+
   html += renderCaptureBox();
 
   if(state.pendingReview.length){
@@ -2367,6 +2983,7 @@ function renderMain(){
     case 'tasks': html += renderTasksView(); break;
     case 'horizons': html += renderHorizonsView(); break;
     case 'calendar': html += renderCalendarView(); break;
+    case 'plays': html += renderPlaysView(); break;
     case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
     case 'digest': html += renderDigestView(); break;
@@ -3971,6 +4588,7 @@ function wireMainEvents(){
   if(state.view === 'themes') wireThemesViewEvents();
   if(state.view === 'horizons') wireHorizonsViewEvents();
   if(state.view === 'calendar') wireCalendarViewEvents();
+  if(state.view === 'plays') wirePlaysViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
@@ -4855,7 +5473,7 @@ function openSettingsModal(){
     state.settings.syncApiKey = key;
     var statusEl = el.querySelector('#syncStatus');
     statusEl.textContent = 'Creating sync bin…';
-    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks };
+    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays };
     remoteSyncCreateBin(toSave).then(function(binId){
       state.settings.syncBinId = binId;
       state.settings.lastSyncAt = Date.now();
