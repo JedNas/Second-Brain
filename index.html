@@ -831,6 +831,7 @@ function defaultState(){
     pendingLinkPreview: null,
     pendingVoiceNote: null,
     taskSortOrder: 'default',
+    lastModifiedAt: 0,
     settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'' }
   };
 }
@@ -950,8 +951,19 @@ function storageDelete(key){
 function pullRemoteState(){
   if(!hasRemoteSync()) return Promise.reject(new Error('Remote sync not configured'));
   var myKey = state.settings.syncApiKey, myBin = state.settings.syncBinId;
+  var localModifiedAt = state.lastModifiedAt || 0;
   return remoteSyncGet().then(function(remote){
     if(remote && remote.folders){
+      var remoteModifiedAt = remote.lastModifiedAt || 0;
+      if(remoteModifiedAt < localModifiedAt){
+        // This device's local copy is newer than what's in the cloud (e.g. a very recent
+        // edit whose upload hasn't landed yet, or this pull raced ahead of it).
+        // Keep the local copy and push it up instead of letting stale cloud data win.
+        return remoteSyncSet({
+          folders: state.folders, trash: state.trash, settings: state.settings,
+          digest: state.digest, taskSortOrder: state.taskSortOrder, lastModifiedAt: localModifiedAt
+        }).catch(function(){});
+      }
       remote.pendingImages = [];
       remote.pendingReview = [];
       remote.pendingLinkPreview = null;
@@ -966,7 +978,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder
+        digest: state.digest, taskSortOrder: state.taskSortOrder, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1021,23 +1033,27 @@ function applySystemTheme(){
 }
 
 function saveLocalSettingsOnly(){
+  state.lastModifiedAt = Date.now();
   var toSave = {
     folders: state.folders,
     trash: state.trash,
     settings: state.settings,
     digest: state.digest,
-    taskSortOrder: state.taskSortOrder
+    taskSortOrder: state.taskSortOrder,
+    lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
 }
 
 function saveState(){
+  state.lastModifiedAt = Date.now();
   var toSave = {
     folders: state.folders,
     trash: state.trash,
     settings: state.settings,
     digest: state.digest,
-    taskSortOrder: state.taskSortOrder
+    taskSortOrder: state.taskSortOrder,
+    lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
   var el = document.getElementById('saveIndicator');
