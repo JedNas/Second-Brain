@@ -477,6 +477,23 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 
 /* ---------- Section blocks ---------- */
 .sb-section{ margin:20px 0; }
+.sb-timeline-strip{
+  display:flex; gap:6px; overflow-x:auto; margin-bottom:20px; padding-bottom:2px;
+}
+.sb-timeline-day{
+  flex:1 0 56px; min-width:56px; display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:var(--bg-elevated); border:1px solid var(--separator); border-radius:12px;
+  padding:8px 4px; cursor:pointer; transition:background 150ms ease;
+}
+.sb-timeline-day:hover{ background:var(--overlay-2); }
+.sb-timeline-day.today{ background:var(--accent-soft); border-color:var(--accent); }
+.sb-timeline-day .td-name{ font-size:9px; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-tertiary); font-weight:700; }
+.sb-timeline-day.today .td-name{ color:var(--accent); }
+.sb-timeline-day .td-num{ font-size:var(--fs-md); font-weight:800; color:var(--text); }
+.sb-timeline-day .td-count{
+  font-size:9px; font-weight:700; color:#fff; background:var(--accent); border-radius:999px;
+  min-width:14px; height:14px; display:flex; align-items:center; justify-content:center; padding:0 4px;
+}
 .sb-today-card{
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
   padding:16px; box-shadow:var(--shadow-sm);
@@ -528,6 +545,30 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-badge-priority.high{ background:var(--danger-soft); color:var(--danger); }
 .sb-badge-due{ font-size:var(--fs-2xs); color:var(--text-secondary); background:var(--overlay-2); padding:2px 8px; border-radius:999px; }
 .sb-badge-theme{ font-size:var(--fs-2xs); color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:999px; cursor:pointer; }
+
+.sb-horizon-tabs{ display:flex; gap:6px; margin:16px 0; flex-wrap:wrap; }
+.sb-horizon-tab{
+  border:1px solid var(--separator); background:var(--bg-elevated); color:var(--text-secondary);
+  padding:8px 18px; border-radius:999px; font-weight:600; font-size:var(--fs-sm);
+}
+.sb-horizon-tab:hover{ background:var(--overlay-2); }
+.sb-horizon-tab.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.sb-horizon-body h4{ font-size:var(--fs-sm); color:var(--text-secondary); margin-bottom:10px; }
+.sb-goals-block{ margin-top:24px; }
+.sb-goal-add-row{ display:flex; gap:8px; margin-bottom:12px; }
+.sb-goal-add-input{
+  flex:1; border:1px solid var(--separator); border-radius:10px; padding:9px 12px;
+  background:var(--bg-elevated); color:var(--text); font-size:var(--fs-sm);
+}
+.sb-goal-list{ display:flex; flex-direction:column; gap:6px; }
+.sb-goal-row{
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:var(--bg-elevated); border:1px solid var(--separator); border-radius:12px;
+}
+.sb-goal-row.done .sb-goal-text{ text-decoration:line-through; color:var(--text-tertiary); }
+.sb-goal-text{ flex:1; font-size:var(--fs-sm); }
+.sb-goal-delete{ border:none; background:none; color:var(--text-tertiary); font-size:13px; }
+.sb-goal-delete:hover{ color:var(--danger); }
 .sb-badge-due.overdue{ background:var(--danger-soft); color:var(--danger); font-weight:600; }
 .sb-note-actions{ display:flex; align-items:center; gap:2px; flex-shrink:0; }
 .sb-note-menu-btn{ width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); }
@@ -976,6 +1017,8 @@ function defaultState(){
     pendingLinkPreview: null,
     pendingVoiceNote: null,
     taskSortOrder: 'default',
+    goals: [],
+    horizonsScale: 'week',
     lastModifiedAt: 0,
     settings: { theme:'light', lastExportAt:null, syncApiKey:'', syncBinId:'', lastSyncAt:null, geminiApiKey:'', profileName:'You', profileSubtitle:'' }
   };
@@ -1106,7 +1149,7 @@ function pullRemoteState(){
         // Keep the local copy and push it up instead of letting stale cloud data win.
         return remoteSyncSet({
           folders: state.folders, trash: state.trash, settings: state.settings,
-          digest: state.digest, taskSortOrder: state.taskSortOrder, lastModifiedAt: localModifiedAt
+          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, lastModifiedAt: localModifiedAt
         }).catch(function(){});
       }
       remote.pendingImages = [];
@@ -1123,7 +1166,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder, lastModifiedAt: state.lastModifiedAt
+        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1185,6 +1228,7 @@ function saveLocalSettingsOnly(){
     settings: state.settings,
     digest: state.digest,
     taskSortOrder: state.taskSortOrder,
+    goals: state.goals,
     lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
@@ -1198,6 +1242,7 @@ function saveState(){
     settings: state.settings,
     digest: state.digest,
     taskSortOrder: state.taskSortOrder,
+    goals: state.goals,
     lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
@@ -1482,6 +1527,26 @@ function findPossibleDuplicate(text){
 function getAllTasks(){
   var all = getAllNotesCached();
   return all.filter(function(item){ return folderIsTaskList(item.folder); });
+}
+
+/* ============================================================
+   GOALS (TimeStripe-style Horizons)
+   ============================================================ */
+function createGoal(content, horizon){
+  return { id: makeId('g'), content: content, horizon: horizon, done: false, createdAt: Date.now() };
+}
+function getGoalsByHorizon(horizon){
+  return state.goals.filter(function(g){ return g.horizon === horizon; }).sort(function(a,b){ return a.createdAt - b.createdAt; });
+}
+function toggleGoalDone(goalId){
+  var g = state.goals.find(function(x){ return x.id === goalId; });
+  if(!g) return;
+  g.done = !g.done;
+  saveState();
+}
+function deleteGoal(goalId){
+  state.goals = state.goals.filter(function(x){ return x.id !== goalId; });
+  saveState();
 }
 
 function computeTaskBuckets(){
@@ -1946,6 +2011,7 @@ function renderSidebar(){
   html += '<div class="sb-nav">';
   html += navItem('home','🏠','Home');
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
+  html += navItem('horizons','🧭','Horizons');
   html += navItem('themes','🏷️','Themes');
   html += navItem('digest','✨','Review');
   html += navItem('trash','🗑','Trash');
@@ -2183,6 +2249,7 @@ function renderMain(){
   switch(state.view){
     case 'folder': html += renderFolderView(); break;
     case 'tasks': html += renderTasksView(); break;
+    case 'horizons': html += renderHorizonsView(); break;
     case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
     case 'digest': html += renderDigestView(); break;
@@ -3025,12 +3092,46 @@ function sendBrainChatMessage(text){
   });
 }
 
+function renderTimelineStrip(){
+  var tasks = getAllTasks();
+  var countsByDate = {};
+  tasks.forEach(function(item){
+    if(item.note.dueDate && !item.note.done){
+      countsByDate[item.note.dueDate] = (countsByDate[item.note.dueDate] || 0) + 1;
+    }
+  });
+  var DAYS = 10;
+  var html = '<div class="sb-timeline-strip">';
+  for(var i=0; i<DAYS; i++){
+    var iso = isoDaysFromNow(i);
+    var parts = iso.split('-').map(Number);
+    var dObj = new Date(parts[0], parts[1]-1, parts[2]);
+    var dayName = i===0 ? 'Today' : dObj.toLocaleDateString('en-US', { weekday:'short' });
+    var count = countsByDate[iso] || 0;
+    html += '<div class="sb-timeline-day' + (i===0 ? ' today' : '') + '" data-timeline-day="' + iso + '">';
+    html += '<div class="td-name">' + dayName + '</div>';
+    html += '<div class="td-num">' + dObj.getDate() + '</div>';
+    html += '<div class="td-count">' + (count ? count : '') + '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function wireTimelineStripEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-timeline-day]'), function(el){
+    el.addEventListener('click', function(){ navigateTo('tasks'); });
+  });
+}
+
 function renderHomeView(){
   var all = getAllNotesCached();
   var folderCount = flattenFolders().length;
   var streak = computeStreak();
 
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
+
+  html += renderTimelineStrip();
 
   var todayBuckets = computeTaskBuckets();
   var todayItems = todayBuckets.overdue.concat(todayBuckets.today);
@@ -3170,6 +3271,119 @@ function getBacklinks(folderName){
 /* ============================================================
    VIEW: THEMES (Robert Greene notecard-style theming)
    ============================================================ */
+/* ============================================================
+   VIEW: HORIZONS (TimeStripe-style time scales + goals)
+   ============================================================ */
+var HORIZON_SCALES = [
+  { key:'day', label:'Day' },
+  { key:'week', label:'Week' },
+  { key:'month', label:'Month' },
+  { key:'quarter', label:'Quarter' },
+  { key:'year', label:'Year' }
+];
+
+function renderHorizonsView(){
+  var scale = state.horizonsScale || 'week';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🧭 Horizons</div></div></div>';
+  html += '<div class="sb-page-desc">Plan across time scales — from today\'s tasks to your yearly goals, inspired by TimeStripe.</div>';
+
+  html += '<div class="sb-horizon-tabs">';
+  HORIZON_SCALES.forEach(function(s){
+    html += '<button class="sb-horizon-tab' + (scale===s.key?' active':'') + '" data-horizon-scale="' + s.key + '">' + s.label + '</button>';
+  });
+  html += '</div>';
+
+  html += '<div class="sb-horizon-body">';
+
+  if(scale === 'day'){
+    var buckets = computeTaskBuckets();
+    var items = buckets.overdue.concat(buckets.today);
+    html += '<h4 style="margin-bottom:10px;">Today\'s tasks</h4>';
+    if(!items.length){
+      html += emptyState('✅','Nothing due today','');
+    } else {
+      html += '<div class="sb-note-list">';
+      items.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+      html += '</div>';
+    }
+  } else if(scale === 'week'){
+    var weekBuckets = computeTaskBuckets();
+    html += '<h4 style="margin-bottom:10px;">This week\'s tasks</h4>';
+    if(!weekBuckets.week.length){
+      html += emptyState('📅','Nothing due this week','');
+    } else {
+      html += '<div class="sb-note-list">';
+      weekBuckets.week.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+      html += '</div>';
+    }
+    html += renderGoalsBlock('week', 'Week goals');
+  } else {
+    var labels = { month:'Month goals', quarter:'Quarter goals', year:'Year goals' };
+    html += renderGoalsBlock(scale, labels[scale]);
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderGoalsBlock(horizon, label){
+  var goals = getGoalsByHorizon(horizon);
+  var html = '<div class="sb-goals-block"><h4>' + escapeHtml(label) + '</h4>';
+  html += '<div class="sb-goal-add-row">';
+  html += '<input type="text" class="sb-goal-add-input" data-goal-input="' + horizon + '" placeholder="Add a ' + horizon + ' goal…">';
+  html += '<button class="sb-btn-cta" data-goal-add-btn="' + horizon + '" style="padding:8px 16px;">Add</button>';
+  html += '</div>';
+  if(!goals.length){
+    html += emptyState('🧭','No goals here yet','Add one above to start planning at this scale.');
+  } else {
+    html += '<div class="sb-goal-list">';
+    goals.forEach(function(g){
+      html += '<div class="sb-goal-row' + (g.done?' done':'') + '" data-goal-id="' + g.id + '">';
+      html += '<button class="sb-note-check' + (g.done?' done':'') + '" data-goal-toggle="' + g.id + '">' + (g.done?'✓':'') + '</button>';
+      html += '<span class="sb-goal-text">' + escapeHtml(g.content) + '</span>';
+      html += '<button class="sb-goal-delete" data-goal-delete="' + g.id + '" title="Delete">✕</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function wireHorizonsViewEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-horizon-scale]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.horizonsScale = btn.getAttribute('data-horizon-scale');
+      renderMain();
+    });
+  });
+
+  function addGoalFrom(horizon){
+    var input = document.querySelector('[data-goal-input="' + horizon + '"]');
+    if(!input) return;
+    var val = input.value.trim();
+    if(!val) return;
+    state.goals.push(createGoal(val, horizon));
+    saveState();
+    renderMain();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goal-add-btn]'), function(btn){
+    btn.addEventListener('click', function(){ addGoalFrom(btn.getAttribute('data-goal-add-btn')); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goal-input]'), function(input){
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); addGoalFrom(input.getAttribute('data-goal-input')); }
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goal-toggle]'), function(btn){
+    btn.addEventListener('click', function(){ toggleGoalDone(btn.getAttribute('data-goal-toggle')); renderMain(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goal-delete]'), function(btn){
+    btn.addEventListener('click', function(){ deleteGoal(btn.getAttribute('data-goal-delete')); renderMain(); });
+  });
+}
+
 function renderThemesView(){
   var all = getAllNotesCached();
 
@@ -3345,9 +3559,11 @@ function wireMainEvents(){
 
   if(state.view === 'folder') wireFolderViewEvents();
   if(state.view === 'themes') wireThemesViewEvents();
+  if(state.view === 'horizons') wireHorizonsViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
+  if(state.view === 'home') wireTimelineStripEvents();
   if(state.view === 'tasks') wireTaskSortSelect();
 }
 
@@ -4228,7 +4444,7 @@ function openSettingsModal(){
     state.settings.syncApiKey = key;
     var statusEl = el.querySelector('#syncStatus');
     statusEl.textContent = 'Creating sync bin…';
-    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder };
+    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals };
     remoteSyncCreateBin(toSave).then(function(binId){
       state.settings.syncBinId = binId;
       state.settings.lastSyncAt = Date.now();
