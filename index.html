@@ -469,6 +469,11 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 /* ---------- Section blocks ---------- */
 .sb-section{ margin:20px 0; }
 .sb-section-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.sb-section-head h3{ display:flex; align-items:center; gap:6px; }
+.sb-today-overdue-count{
+  font-size:var(--fs-2xs); font-weight:700; color:var(--danger);
+  background:var(--danger-soft); padding:3px 10px; border-radius:999px;
+}
 .sb-home-more-hint{ text-align:center; color:var(--text-tertiary); font-size:var(--fs-xs); padding:14px 0 4px; }
 .sb-section-head h3{ font-size:var(--fs-base); color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
 
@@ -2991,6 +2996,22 @@ function renderHomeView(){
   html += '<div class="sb-stat"><div class="val">' + all.length + '</div><div class="lbl">Notes</div></div>';
   html += '<div class="sb-stat"><div class="val">' + folderCount + '</div><div class="lbl">Folders</div></div>';
   html += '<div class="sb-stat"><div class="val">' + streak + '</div><div class="lbl">Day streak</div></div>';
+  html += '</div>';
+
+  var todayBuckets = computeTaskBuckets();
+  var todayItems = todayBuckets.overdue.concat(todayBuckets.today);
+  html += '<div class="sb-section"><div class="sb-section-head"><h3>' + folderIconSvg('📅', 18) + ' Today</h3>';
+  if(todayBuckets.overdue.length){
+    html += '<span class="sb-today-overdue-count">' + todayBuckets.overdue.length + ' overdue</span>';
+  }
+  html += '</div>';
+  if(!todayItems.length){
+    html += emptyState('✅','All caught up','Nothing due today — nice work.');
+  } else {
+    html += '<div class="sb-note-list">';
+    todayItems.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+    html += '</div>';
+  }
   html += '</div>';
 
   html += renderBrainChat();
