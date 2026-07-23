@@ -487,6 +487,12 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 .sb-timeline-day:hover{ background:var(--overlay-2); }
 .sb-timeline-day.today{ background:var(--accent-soft); border-color:var(--accent); }
+.sb-timeline-day.selected{ background:var(--accent); border-color:var(--accent); }
+.sb-timeline-day.selected .td-name, .sb-timeline-day.selected .td-num{ color:#fff; }
+.sb-timeline-expanded{
+  background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
+  padding:16px; box-shadow:var(--shadow-sm); margin-bottom:20px;
+}
 .sb-timeline-day .td-name{ font-size:9px; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-tertiary); font-weight:700; }
 .sb-timeline-day.today .td-name{ color:var(--accent); }
 .sb-timeline-day .td-num{ font-size:var(--fs-md); font-weight:800; color:var(--text); }
@@ -3023,6 +3029,7 @@ function renderFolderTile(f){
    VIEW: HOME
    ============================================================ */
 var expandedNoteId = null;
+var timelineSelectedDay = null;
 
 /* ============================================================
    ASK YOUR SECOND BRAIN (home page AI chat)
@@ -3108,20 +3115,45 @@ function renderTimelineStrip(){
     var dObj = new Date(parts[0], parts[1]-1, parts[2]);
     var dayName = i===0 ? 'Today' : dObj.toLocaleDateString('en-US', { weekday:'short' });
     var count = countsByDate[iso] || 0;
-    html += '<div class="sb-timeline-day' + (i===0 ? ' today' : '') + '" data-timeline-day="' + iso + '">';
+    var cls = 'sb-timeline-day' + (i===0 ? ' today' : '') + (timelineSelectedDay===iso ? ' selected' : '');
+    html += '<div class="' + cls + '" data-timeline-day="' + iso + '">';
     html += '<div class="td-name">' + dayName + '</div>';
     html += '<div class="td-num">' + dObj.getDate() + '</div>';
     html += '<div class="td-count">' + (count ? count : '') + '</div>';
     html += '</div>';
   }
   html += '</div>';
+
+  if(timelineSelectedDay){
+    var dayItems = tasks.filter(function(item){ return item.note.dueDate === timelineSelectedDay && !item.note.done; });
+    var dp = timelineSelectedDay.split('-').map(Number);
+    var dObj2 = new Date(dp[0], dp[1]-1, dp[2]);
+    var label = dObj2.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+    html += '<div class="sb-timeline-expanded">';
+    html += '<div class="sb-section-head"><h3>' + escapeHtml(label) + '</h3><button class="sb-btn-text" data-timeline-close="1">Close ✕</button></div>';
+    if(!dayItems.length){
+      html += emptyState('📅','Nothing due this day','');
+    } else {
+      html += '<div class="sb-note-list">';
+      dayItems.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
   return html;
 }
 
 function wireTimelineStripEvents(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-timeline-day]'), function(el){
-    el.addEventListener('click', function(){ navigateTo('tasks'); });
+    el.addEventListener('click', function(){
+      var day = el.getAttribute('data-timeline-day');
+      timelineSelectedDay = (timelineSelectedDay === day) ? null : day;
+      renderMain();
+    });
   });
+  var closeBtn = document.querySelector('[data-timeline-close]');
+  if(closeBtn) closeBtn.addEventListener('click', function(){ timelineSelectedDay = null; renderMain(); });
 }
 
 function renderHomeView(){
