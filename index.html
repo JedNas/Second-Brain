@@ -602,7 +602,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-unsched h4{ font-size:var(--fs-sm); color:var(--text-secondary); margin-bottom:10px; }
 .sb-cal-unsched-item{
   background:var(--overlay-1); border:1px solid var(--separator); border-radius:10px;
-  padding:8px 10px; font-size:var(--fs-xs); margin-bottom:6px; cursor:grab;
+  padding:8px 10px; font-size:var(--fs-xs); margin-bottom:6px; cursor:grab; touch-action:none;
 }
 .sb-cal-unsched-item:hover{ background:var(--accent-soft); border-color:var(--accent); }
 .sb-cal-unsched-empty{ font-size:var(--fs-xs); color:var(--text-tertiary); padding:8px 0; }
@@ -619,7 +619,9 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-daycol-head.today{ color:var(--accent); border-color:var(--accent); }
 .sb-cal-daycol-body{
   position:relative; border-left:1px solid var(--separator); background:var(--bg-elevated);
+  transition:background 100ms ease;
 }
+.sb-cal-daycol-body.drop-hover{ background:var(--accent-soft); }
 .sb-cal-hourline{
   position:absolute; left:0; right:0; border-top:1px solid var(--separator); height:1px;
 }
@@ -628,7 +630,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 .sb-cal-block{
   position:absolute; left:4px; right:4px; background:var(--accent-soft); border:1px solid var(--accent);
-  border-radius:8px; padding:4px 22px 4px 8px; overflow:hidden; cursor:grab; z-index:5;
+  border-radius:8px; padding:4px 22px 4px 8px; overflow:hidden; cursor:grab; z-index:5; touch-action:none;
 }
 .sb-cal-block-title{ font-size:var(--fs-2xs); font-weight:700; color:var(--accent); line-height:1.2; }
 .sb-cal-block-time{ font-size:9px; color:var(--accent); opacity:0.8; }
@@ -638,7 +640,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 .sb-cal-block-delete:hover{ opacity:1; color:var(--danger); }
 .sb-cal-resize-handle{
-  position:absolute; left:0; right:0; bottom:0; height:6px; cursor:ns-resize;
+  position:absolute; left:0; right:0; bottom:0; height:10px; cursor:ns-resize; touch-action:none;
 }
 
 /* ---------- Playbook ---------- */
@@ -4402,36 +4404,67 @@ function wireCalendarViewEvents(){
     });
   });
 
+  // --- Drag an unscheduled task onto the grid (pointer-based, works on touch + mouse) ---
   Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-unsched-item'), function(item){
-    item.addEventListener('dragstart', function(e){
-      e.dataTransfer.setData('text/sb-cal-task', JSON.stringify({
-        noteId: item.getAttribute('data-cal-task-note'),
-        folderId: item.getAttribute('data-cal-task-folder'),
-        content: item.textContent
-      }));
+    item.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      var noteId = item.getAttribute('data-cal-task-note');
+      var folderId = item.getAttribute('data-cal-task-folder');
+      var content = item.textContent;
+
+      var ghost = item.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.zIndex = '9999';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.width = item.getBoundingClientRect().width + 'px';
+      ghost.style.opacity = '0.85';
+      ghost.style.boxShadow = 'var(--shadow-lg)';
+      document.body.appendChild(ghost);
+      function positionGhost(x, y){
+        ghost.style.left = (x + 12) + 'px';
+        ghost.style.top = (y + 12) + 'px';
+      }
+      positionGhost(e.clientX, e.clientY);
+      var lastX = e.clientX, lastY = e.clientY;
+      var moved = false;
+
+      function onMove(e2){
+        lastX = e2.clientX; lastY = e2.clientY;
+        moved = true;
+        positionGhost(lastX, lastY);
+        Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(c){ c.classList.remove('drop-hover'); });
+        var under = document.elementFromPoint(lastX, lastY);
+        var col = under && under.closest ? under.closest('.sb-cal-daycol-body') : null;
+        if(col) col.classList.add('drop-hover');
+      }
+      function onUp(e2){
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        ghost.remove();
+        Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(c){ c.classList.remove('drop-hover'); });
+        if(!moved) return;
+        var under = document.elementFromPoint(lastX, lastY);
+        var col = under && under.closest ? under.closest('.sb-cal-daycol-body') : null;
+        if(!col) return;
+        var date = col.getAttribute('data-cal-date-body');
+        var rect = col.getBoundingClientRect();
+        var y = lastY - rect.top;
+        var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
+        state.calendarBlocks.push(createCalendarBlock({
+          title: content, date: date, startMinutes: minutes, duration: 60,
+          linkedFolderId: folderId, linkedNoteId: noteId
+        }));
+        saveState();
+        renderMain();
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     });
   });
 
+  // --- Click/tap an empty slot to create a custom block ---
   Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(colBody){
     var date = colBody.getAttribute('data-cal-date-body');
-
-    colBody.addEventListener('dragover', function(e){ e.preventDefault(); });
-    colBody.addEventListener('drop', function(e){
-      e.preventDefault();
-      var raw = e.dataTransfer.getData('text/sb-cal-task');
-      if(!raw) return;
-      var data = JSON.parse(raw);
-      var rect = colBody.getBoundingClientRect();
-      var y = e.clientY - rect.top;
-      var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
-      state.calendarBlocks.push(createCalendarBlock({
-        title: data.content, date: date, startMinutes: minutes, duration: 60,
-        linkedFolderId: data.folderId, linkedNoteId: data.noteId
-      }));
-      saveState();
-      renderMain();
-    });
-
     colBody.addEventListener('click', function(e){
       if(e.target.closest('.sb-cal-block')) return;
       var rect = colBody.getBoundingClientRect();
@@ -4441,6 +4474,7 @@ function wireCalendarViewEvents(){
     });
   });
 
+  // --- Move / resize existing blocks (pointer-based) ---
   Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-block'), function(block){
     var blockId = block.getAttribute('data-cal-block-id');
 
@@ -4451,9 +4485,10 @@ function wireCalendarViewEvents(){
       renderMain();
     });
 
-    block.addEventListener('mousedown', function(e){
+    block.addEventListener('pointerdown', function(e){
       if(e.target.closest('[data-cal-resize]') || e.target.closest('[data-cal-block-delete]')) return;
       e.preventDefault();
+      block.setPointerCapture && block.setPointerCapture(e.pointerId);
       var startY = e.clientY;
       var startTop = parseFloat(block.style.top);
       var moved = false;
@@ -4463,8 +4498,8 @@ function wireCalendarViewEvents(){
         block.style.top = Math.max(0, startTop + dy) + 'px';
       }
       function onUp(){
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
+        block.removeEventListener('pointermove', onMove);
+        block.removeEventListener('pointerup', onUp);
         if(!moved) return;
         var newTop = parseFloat(block.style.top);
         var newStart = snapMinutes(CAL_HOUR_START*60 + (newTop / CAL_MIN_PX));
@@ -4472,14 +4507,15 @@ function wireCalendarViewEvents(){
         if(b){ b.startMinutes = newStart; saveState(); }
         renderMain();
       }
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+      block.addEventListener('pointermove', onMove);
+      block.addEventListener('pointerup', onUp);
     });
 
     var handle = block.querySelector('[data-cal-resize]');
-    if(handle) handle.addEventListener('mousedown', function(e){
+    if(handle) handle.addEventListener('pointerdown', function(e){
       e.preventDefault();
       e.stopPropagation();
+      handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
       var startY = e.clientY;
       var startHeight = parseFloat(block.style.height);
       function onMove(e2){
@@ -4488,16 +4524,16 @@ function wireCalendarViewEvents(){
         block.style.height = newHeight + 'px';
       }
       function onUp(){
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
         var newHeight = parseFloat(block.style.height);
         var newDuration = Math.max(15, snapMinutes(newHeight / CAL_MIN_PX));
         var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
         if(b){ b.duration = newDuration; saveState(); }
         renderMain();
       }
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
     });
   });
 }
