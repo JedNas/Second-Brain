@@ -257,6 +257,11 @@ a{ color:var(--accent); }
 .sb-capture-dock .sb-capture{ margin-bottom:0; }
 .sb-main-inner{ max-width:840px; margin:0 auto; }
 .sb-main-inner.sb-wide-view{ max-width:none; margin:0; }
+.sb-main-inner.sb-no-scroll-view{
+  overflow:hidden; display:flex; flex-direction:column; height:100%;
+}
+.sb-brain-shrink{ flex-shrink:0; }
+.sb-brain-shrink .sb-page-desc{ margin-top:2px; }
 
 /* ---------- Banners ---------- */
 .sb-banner{
@@ -666,7 +671,8 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 
 /* ---------- Playbook ---------- */
 /* ---------- Brain (drill-down folder navigator) ---------- */
-.sb-brain-crumbs{ display:flex; align-items:center; gap:8px; margin:14px 0; font-size:var(--fs-sm); flex-wrap:wrap; }
+.sb-brain-crumbs{ display:flex; align-items:center; gap:8px; margin:12px 0; font-size:var(--fs-sm); flex-wrap:wrap; flex-shrink:0; }
+.sb-brain-back{ margin-right:4px; }
 .sb-brain-crumb{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; color:var(--text-secondary); font-weight:600; }
 .sb-brain-crumb.active{ color:var(--accent); }
 .sb-brain-crumb:hover{ text-decoration:underline; }
@@ -675,13 +681,15 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   display:flex; align-items:center; justify-content:center;
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
   padding:10px; overflow:hidden; transition:opacity 140ms ease, transform 140ms ease;
+  flex:1; min-height:0;
 }
 .sb-brain-canvas-wrap.zoom-out{ opacity:0; transform:scale(0.8); }
 .sb-brain-canvas-wrap.zoom-in{ animation:sbBrainZoomIn 240ms ease; }
 @keyframes sbBrainZoomIn{ from{ opacity:0; transform:scale(0.8); } to{ opacity:1; transform:scale(1); } }
-.sb-brain-canvas{ width:100%; height:70vh; display:block; }
+.sb-brain-canvas{ width:100%; height:100%; display:block; }
 .sb-brain-hub{ fill:var(--separator); }
-.sb-brain-line{ stroke:var(--separator); stroke-width:2; }
+.sb-brain-glow{ fill:var(--accent); opacity:0.35; }
+.sb-brain-line{ stroke:var(--accent); stroke-width:1.5; fill:none; opacity:0.35; }
 .sb-brain-node{ cursor:pointer; }
 .sb-brain-node .bn-circle{
   fill:var(--bg-sidebar); stroke:var(--accent); stroke-width:2; transition:stroke-width 150ms ease;
@@ -1963,29 +1971,38 @@ function computeBrainLayout(){
 function buildBrainSvg(){
   var data = computeBrainLayout();
   var html = '<svg id="brainSvg" class="sb-brain-canvas" viewBox="0 0 ' + data.W + ' ' + data.H + '" preserveAspectRatio="xMidYMid meet">';
+  html += '<defs><filter id="brainGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10"/></filter></defs>';
 
   data.nodes.forEach(function(n){
-    html += '<line x1="' + data.cx + '" y1="' + data.cy + '" x2="' + n.x + '" y2="' + n.y + '" class="sb-brain-line"/>';
+    var mx = (data.cx + n.x) / 2, my = (data.cy + n.y) / 2;
+    var dx = n.x - data.cx, dy = n.y - data.cy;
+    var nx = -dy, ny = dx;
+    var len = Math.sqrt(nx*nx + ny*ny) || 1;
+    var bow = 18;
+    var cxp = mx + (nx/len) * bow, cyp = my + (ny/len) * bow;
+    html += '<path d="M ' + data.cx + ',' + data.cy + ' Q ' + cxp + ',' + cyp + ' ' + n.x + ',' + n.y + '" class="sb-brain-line"/>';
   });
 
   if(data.center){
+    html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="30" class="sb-brain-glow" filter="url(#brainGlow)"/>';
     html += '<g class="sb-brain-center-node" data-brain-center-open="' + data.center.id + '" transform="translate(' + data.cx + ',' + data.cy + ')">';
-    html += '<circle r="36" class="bn-center-circle"/>';
-    html += '<g transform="translate(-16,-16)">' + folderIconSvg(data.center.icon, 32) + '</g>';
+    html += '<circle r="34" class="bn-center-circle"/>';
+    html += '<g transform="translate(-15,-15)">' + folderIconSvg(data.center.icon, 30) + '</g>';
     html += '</g>';
-    html += '<text class="sb-brain-center-label" x="' + data.cx + '" y="' + (data.cy + 54) + '" text-anchor="middle" data-brain-center-open="' + data.center.id + '">' + escapeHtml(data.center.name) + '</text>';
+    html += '<text class="sb-brain-center-label" x="' + data.cx + '" y="' + (data.cy + 52) + '" text-anchor="middle" data-brain-center-open="' + data.center.id + '">' + escapeHtml(data.center.name) + '</text>';
   } else {
-    html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="13" class="sb-brain-hub"/>';
+    html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="18" class="sb-brain-glow" filter="url(#brainGlow)"/>';
+    html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="11" class="sb-brain-hub"/>';
   }
 
   data.nodes.forEach(function(n){
     var hasKids = !!(n.folder.subfolders && n.folder.subfolders.length);
     var noteCount = (n.folder.notes || []).length;
     html += '<g class="sb-brain-node" data-brain-node="' + n.folder.id + '" data-has-kids="' + (hasKids?1:0) + '" transform="translate(' + n.x + ',' + n.y + ')">';
-    html += '<circle r="26" class="bn-circle"/>';
-    html += '<g transform="translate(-13,-13)">' + folderIconSvg(n.folder.icon, 26) + '</g>';
+    html += '<circle r="24" class="bn-circle"/>';
+    html += '<g transform="translate(-12,-12)">' + folderIconSvg(n.folder.icon, 24) + '</g>';
     html += '</g>';
-    html += '<text class="sb-brain-label" x="' + n.x + '" y="' + (n.y + 42) + '" text-anchor="middle" data-brain-open="' + n.folder.id + '">' + escapeHtml(n.folder.name) + (noteCount ? ' · ' + noteCount : '') + '</text>';
+    html += '<text class="sb-brain-label" x="' + n.x + '" y="' + (n.y + 40) + '" text-anchor="middle" data-brain-open="' + n.folder.id + '">' + escapeHtml(n.folder.name) + (noteCount ? ' · ' + noteCount : '') + '</text>';
   });
 
   html += '</svg>';
@@ -1994,6 +2011,9 @@ function buildBrainSvg(){
 
 function renderBrainBreadcrumb(){
   var html = '<div class="sb-brain-crumbs">';
+  if(brainCenterId){
+    html += '<button class="sb-btn-text sb-brain-back" id="btnBrainBack">← Back</button>';
+  }
   html += '<span class="sb-brain-crumb' + (!brainCenterId ? ' active' : '') + '" data-brain-crumb="">' + folderIconSvg('🧠', 13) + ' Brain</span>';
   brainPath.forEach(function(p, i){
     html += '<span class="sb-brain-crumb-sep">›</span>';
@@ -2004,8 +2024,7 @@ function renderBrainBreadcrumb(){
 }
 
 function renderBrainView(){
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🧠', 22) + ' Brain</div></div></div>';
-  html += '<div class="sb-page-desc">Click a folder to dive into it. Click its name (or the center) to open it.</div>';
+  var html = '<div class="sb-page-head sb-brain-shrink"><div><div class="sb-page-title">' + folderIconSvg('🧠', 22) + ' Brain</div><div class="sb-page-desc">Click a folder to dive into it. Click its name (or the center) to open it.</div></div></div>';
   html += renderBrainBreadcrumb();
   html += '<div class="sb-brain-canvas-wrap" id="brainCanvasWrap">' + buildBrainSvg() + '</div>';
   return html;
@@ -2075,6 +2094,12 @@ function wireBrainViewEvents(){
       e.stopPropagation();
       goToBrainCrumb(el.getAttribute('data-brain-crumb'));
     });
+  });
+  var backBtn = document.getElementById('btnBrainBack');
+  if(backBtn) backBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var prevId = brainPath.length >= 2 ? brainPath[brainPath.length-2].id : null;
+    goToBrainCrumb(prevId);
   });
 }
 
@@ -3404,6 +3429,7 @@ function renderMain(){
   var mainEl = document.getElementById('main');
   mainEl.innerHTML = html;
   mainEl.classList.toggle('sb-wide-view', state.view === 'calendar' || state.view === 'plays' || state.view === 'brain');
+  mainEl.classList.toggle('sb-no-scroll-view', state.view === 'brain');
   wireMainEvents();
   renderBulkBar();
 }
