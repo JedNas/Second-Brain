@@ -450,15 +450,15 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 /* ---------- Ask your second brain (home chat) ---------- */
 .sb-brainchat{
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
-  padding:16px; box-shadow:var(--shadow-sm); margin:20px 0;
+  padding:24px; box-shadow:var(--shadow-sm); margin:20px 0;
 }
-.sb-brainchat-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.sb-brainchat-head h3{ font-size:var(--fs-md); }
+.sb-brainchat-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sb-brainchat-head h3{ font-size:var(--fs-lg); }
 .sb-brainchat-messages{
-  display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto;
-  margin-bottom:10px; scroll-behavior:smooth;
+  display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto;
+  margin-bottom:14px; scroll-behavior:smooth;
 }
-.sb-brainchat-empty{ color:var(--text-tertiary); font-size:var(--fs-sm); padding:6px 2px; }
+.sb-brainchat-empty{ color:var(--text-secondary); font-size:var(--fs-md); line-height:1.6; padding:10px 2px 4px; }
 .sb-brainchat-msg{
   max-width:80%; padding:9px 13px; border-radius:var(--radius); font-size:var(--fs-sm); line-height:1.45;
   word-break:break-word; white-space:normal;
@@ -473,10 +473,10 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-brainchat-msg.loading span:nth-child(2){ animation-delay:0.15s; }
 .sb-brainchat-msg.loading span:nth-child(3){ animation-delay:0.3s; }
 @keyframes brainDot{ 0%,80%,100%{ opacity:0.3; transform:translateY(0); } 40%{ opacity:1; transform:translateY(-3px); } }
-.sb-brainchat-input-row{ display:flex; gap:8px; }
+.sb-brainchat-input-row{ display:flex; gap:10px; }
 .sb-brainchat-input-row input{
   flex:1; border:1px solid var(--separator); background:var(--bg); border-radius:999px;
-  padding:9px 16px; outline:none; font-size:var(--fs-sm); transition:border-color 150ms ease, box-shadow 150ms ease;
+  padding:14px 20px; outline:none; font-size:var(--fs-md); transition:border-color 150ms ease, box-shadow 150ms ease;
 }
 .sb-brainchat-input-row input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
 
@@ -638,6 +638,10 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   transition:background 100ms ease;
 }
 .sb-cal-daycol-body.drop-hover{ background:var(--accent-soft); }
+.sb-cal-quarter{
+  position:absolute; left:0; right:0; background:transparent; transition:background 80ms ease; pointer-events:auto;
+}
+.sb-cal-quarter:hover{ background:var(--accent-soft); }
 .sb-cal-hourline{
   position:absolute; left:0; right:0; border-top:1px solid var(--separator); height:1px;
 }
@@ -988,7 +992,7 @@ var FOLDER_ICON_PATHS = {
   '🗑': '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>',
   '↪': '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
   '🔀': '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 8v8"/><path d="M6 12c0-3 3-6 6-6h4"/>',
-  '⚙': '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M4.2 7.5l2.2 1.3M17.6 15.2l2.2 1.3M3 12h2.5M18.5 12H21M4.2 16.5l2.2-1.3M17.6 8.8l2.2-1.3M7.5 4.2l1.3 2.2M15.2 17.6l1.3 2.2M7.5 19.8l1.3-2.2M15.2 6.4l1.3-2.2"/>',
+  '⚙': '<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="var(--bg-elevated)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2" fill="var(--bg-elevated)"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill="var(--bg-elevated)"/>',
   '🔥': '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
   '🔍': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   '⚠': '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>',
@@ -4431,6 +4435,14 @@ function renderCalendarDayColumn(date, wide){
   html += '<div class="sb-cal-daycol-head' + (isToday?' today':'') + '">' + dayLabel + '</div>';
   html += '<div class="sb-cal-daycol-body" data-cal-date-body="' + date + '" style="height:' + totalHeight + 'px;">';
 
+  for(var h0=CAL_HOUR_START; h0<CAL_HOUR_END; h0++){
+    for(var q=0; q<4; q++){
+      var qTop = (h0 - CAL_HOUR_START) * 60 * CAL_MIN_PX + q * 15 * CAL_MIN_PX;
+      var qHeight = 15 * CAL_MIN_PX;
+      html += '<div class="sb-cal-quarter" style="top:' + qTop + 'px;height:' + qHeight + 'px;"></div>';
+    }
+  }
+
   for(var h=CAL_HOUR_START; h<=CAL_HOUR_END; h++){
     var top = (h - CAL_HOUR_START) * 60 * CAL_MIN_PX;
     html += '<div class="sb-cal-hourline" style="top:' + top + 'px;"><span>' + minutesToLabel(h*60) + '</span></div>';
@@ -6022,9 +6034,61 @@ if(window.matchMedia){
 /* ============================================================
    INIT
    ============================================================ */
+function seedSampleDataIfEmpty(){
+  if(getAllNotesCached().length > 0) return;
+  if(!state.folders.length) return;
+
+  var sampleByName = {
+    'Ideas': [
+      { content:'Try a 1-3-1 zone press against faster teams', opts:{ description:'Worked well in practice scrimmage last week.' }, pinned:true, theme:'Defense' },
+      { content:'Post-up footwork drill for bigs', opts:{} },
+      { content:'Film session idea: compare our transition D to last season', opts:{} }
+    ],
+    'Reading & Watching': [
+      { content:'Basketball IQ by Mike MacKay', opts:{ description:'Recommended by another coach, chapter on reads.' } },
+      { content:'Watch: Spain national team motion offense clips', opts:{} }
+    ],
+    'Reflections': [
+      { content:'Team felt flat after the long bus ride Tuesday', opts:{ description:'Consider adjusting pre-game routine for away games.' }, theme:'Team culture' },
+      { content:'Proud of how the bench stepped up in Q3 Friday', opts:{} }
+    ],
+    'To Do': [
+      { content:'Email parents about Saturday tournament time', opts:{ priority:'high', dueDate: todayISO() } },
+      { content:'Book the gym for extra Thursday session', opts:{ priority:'medium', dueDate: isoDaysFromNow(2) } },
+      { content:'Return the ball bag to the equipment room', opts:{ priority:'low' }, done:true }
+    ],
+    'To Buy': [
+      { content:'New whistle', opts:{ priority:'low' } },
+      { content:'Practice jerseys (size L x6)', opts:{ priority:'medium', dueDate: isoDaysFromNow(5) } }
+    ]
+  };
+
+  var fallbackPool = [].concat.apply([], Object.keys(sampleByName).map(function(k){ return sampleByName[k]; }));
+  var fallbackIdx = 0;
+
+  state.folders.forEach(function(folder){
+    var samples = sampleByName[folder.name];
+    if(!samples){
+      samples = [fallbackPool[fallbackIdx % fallbackPool.length]];
+      fallbackIdx++;
+    }
+    samples.forEach(function(s){
+      var note = createNote(s.content, s.opts);
+      if(s.pinned) note.pinned = true;
+      if(s.theme) note.theme = s.theme;
+      if(s.done) note.done = true;
+      folder.notes.push(note);
+    });
+  });
+
+  invalidateNotesCache();
+  saveState();
+}
+
 function init(){
   loadState().then(function(){
     handleIncomingShare();
+    seedSampleDataIfEmpty();
     renderAll();
 
     if(getAllNotesCached().length > 20 && !state.settings.lastExportAt){
