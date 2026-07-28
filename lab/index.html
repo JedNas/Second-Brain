@@ -665,6 +665,28 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 
 /* ---------- Playbook ---------- */
+/* ---------- Brain (folder node graph) ---------- */
+.sb-brain-canvas-wrap{
+  display:flex; align-items:center; justify-content:center;
+  background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
+  padding:10px; margin-top:14px; overflow:hidden;
+}
+.sb-brain-canvas{ width:100%; height:70vh; display:block; }
+.sb-brain-hub{ fill:var(--accent); }
+.sb-brain-line{ stroke:var(--separator); stroke-width:2; }
+.sb-brain-node{ cursor:pointer; }
+.sb-brain-node .bn-circle{
+  fill:var(--bg-sidebar); stroke:var(--accent); stroke-width:2; transition:fill 150ms ease, stroke-width 150ms ease;
+}
+.sb-brain-node:hover .bn-circle{ stroke-width:3; }
+.sb-brain-node.expanded .bn-circle{ fill:var(--accent); }
+.sb-brain-node .sb-folder-ico-svg{ color:var(--accent); pointer-events:none; }
+.sb-brain-node.expanded .sb-folder-ico-svg{ color:#fff; }
+.sb-brain-label{
+  font-size:12px; font-weight:700; fill:var(--text); cursor:pointer;
+}
+.sb-brain-label:hover{ fill:var(--accent); text-decoration:underline; }
+
 .sb-play-tile{ position:relative; }
 .sb-play-delete{
   position:absolute; top:8px; right:8px; border:none; background:var(--overlay-2); color:var(--text-tertiary);
@@ -1905,6 +1927,101 @@ function renderPlayObject(obj){
 }
 
 /* ---------- Playbook library ---------- */
+/* ============================================================
+   VIEW: BRAIN (folders as an expandable neuron-style node graph)
+   ============================================================ */
+var brainExpanded = {};
+
+function computeBrainNodes(){
+  var W = 1000, H = 620, cx = W/2, cy = H/2;
+  var nodes = [];
+
+  function placeChildren(folder, x, y, depth, angleStart, angleSpan, radius){
+    var kids = folder.subfolders || [];
+    if(!brainExpanded[folder.id] || !kids.length) return;
+    var n = kids.length;
+    kids.forEach(function(kid, i){
+      var angle = angleStart + (n > 1 ? (angleSpan * (i/(n-1))) : angleSpan/2);
+      var kx = x + Math.cos(angle) * radius;
+      var ky = y + Math.sin(angle) * radius;
+      nodes.push({ folder:kid, x:kx, y:ky, depth:depth, parentX:x, parentY:y, hasChildren: !!(kid.subfolders && kid.subfolders.length) });
+      placeChildren(kid, kx, ky, depth+1, angle - 0.9, 1.8, Math.max(60, radius*0.72));
+    });
+  }
+
+  var roots = state.folders;
+  var n = Math.max(roots.length, 1);
+  var R0 = Math.min(W,H)/2 - 90;
+  roots.forEach(function(folder, i){
+    var angle = (Math.PI*2*i/n) - Math.PI/2;
+    var x = cx + Math.cos(angle) * R0;
+    var y = cy + Math.sin(angle) * R0;
+    nodes.push({ folder:folder, x:x, y:y, depth:0, parentX:cx, parentY:cy, hasChildren: !!(folder.subfolders && folder.subfolders.length) });
+    placeChildren(folder, x, y, 1, angle - 0.9, 1.8, 150);
+  });
+
+  return { nodes:nodes, cx:cx, cy:cy, W:W, H:H };
+}
+
+function buildBrainSvg(){
+  var data = computeBrainNodes();
+  var html = '<svg id="brainSvg" class="sb-brain-canvas" viewBox="0 0 ' + data.W + ' ' + data.H + '" preserveAspectRatio="xMidYMid meet">';
+
+  html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="9" class="sb-brain-hub"/>';
+
+  data.nodes.forEach(function(n){
+    html += '<line x1="' + n.parentX + '" y1="' + n.parentY + '" x2="' + n.x + '" y2="' + n.y + '" class="sb-brain-line"/>';
+  });
+
+  data.nodes.forEach(function(n){
+    var r = Math.max(16, 30 - n.depth*5);
+    var noteCount = (n.folder.notes || []).length;
+    html += '<g class="sb-brain-node' + (brainExpanded[n.folder.id] ? ' expanded' : '') + '" data-brain-node="' + n.folder.id + '" transform="translate(' + n.x + ',' + n.y + ')">';
+    html += '<circle r="' + r + '" class="bn-circle"/>';
+    html += '<g transform="translate(' + (-r*0.5) + ',' + (-r*0.5) + ')">' + folderIconSvg(n.folder.icon, r) + '</g>';
+    html += '</g>';
+    html += '<text class="sb-brain-label" x="' + n.x + '" y="' + (n.y + r + 16) + '" text-anchor="middle" data-brain-open="' + n.folder.id + '">' + escapeHtml(n.folder.name) + (noteCount ? ' · ' + noteCount : '') + '</text>';
+  });
+
+  html += '</svg>';
+  return html;
+}
+
+function renderBrainView(){
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🧠', 22) + ' Brain</div></div></div>';
+  html += '<div class="sb-page-desc">Click a node to reveal what\'s inside it. Click its name to open the folder.</div>';
+  html += '<div class="sb-brain-canvas-wrap">' + buildBrainSvg() + '</div>';
+  return html;
+}
+
+function redrawBrainCanvas(){
+  var wrap = document.querySelector('.sb-brain-canvas-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = buildBrainSvg();
+  wireBrainCanvasEvents();
+}
+
+function wireBrainCanvasEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-brain-node]'), function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      var id = el.getAttribute('data-brain-node');
+      brainExpanded[id] = !brainExpanded[id];
+      redrawBrainCanvas();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-brain-open]'), function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      navigateTo('folder', { folderId: el.getAttribute('data-brain-open') });
+    });
+  });
+}
+
+function wireBrainViewEvents(){
+  wireBrainCanvasEvents();
+}
+
 function renderPlaysView(){
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏀', 22) + ' Plays</div></div>';
   html += '<div class="sb-page-actions"><button class="sb-btn-cta" id="btnNewPlay">+ New Play</button></div></div>';
@@ -2964,6 +3081,7 @@ function renderSidebar(){
   html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
   html += navItem('calendar','📅','Calendar');
   html += navItem('plays','🏀','Plays', null, true);
+  html += navItem('brain','🧠','Brain');
   html += navItem('trash','🗑','Trash');
   html += navItem('ideas','💡','Ideas');
   html += '</div>';
@@ -3218,6 +3336,7 @@ function renderMain(){
     case 'horizons': html += renderHorizonsView(); break;
     case 'calendar': html += renderCalendarView(); break;
     case 'plays': html += renderPlaysView(); break;
+    case 'brain': html += renderBrainView(); break;
     case 'ideas': html += renderIdeasView(); break;
     case 'themes': html += renderThemesView(); break;
     case 'trash': html += renderTrashView(); break;
@@ -3227,7 +3346,7 @@ function renderMain(){
 
   var mainEl = document.getElementById('main');
   mainEl.innerHTML = html;
-  mainEl.classList.toggle('sb-wide-view', state.view === 'calendar' || state.view === 'plays');
+  mainEl.classList.toggle('sb-wide-view', state.view === 'calendar' || state.view === 'plays' || state.view === 'brain');
   wireMainEvents();
   renderBulkBar();
 }
@@ -4918,6 +5037,7 @@ function wireMainEvents(){
   if(state.view === 'horizons') wireHorizonsViewEvents();
   if(state.view === 'calendar') wireCalendarViewEvents();
   if(state.view === 'plays') wirePlaysViewEvents();
+  if(state.view === 'brain') wireBrainViewEvents();
   if(state.view === 'ideas') wireIdeasViewEvents();
   if(state.view === 'trash') wireTrashViewEvents();
   if(state.view === 'digest') wireDigestViewEvents();
