@@ -256,6 +256,7 @@ a{ color:var(--accent); }
 .sb-capture-dock:empty{ display:none; }
 .sb-capture-dock .sb-capture{ margin-bottom:0; }
 .sb-main-inner{ max-width:840px; margin:0 auto; }
+.sb-main-inner.sb-wide-view{ max-width:none; margin:0; }
 
 /* ---------- Banners ---------- */
 .sb-banner{
@@ -641,7 +642,8 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   position:absolute; left:0; right:0; border-top:1px solid var(--separator); height:1px;
 }
 .sb-cal-hourline span{
-  position:absolute; top:-8px; left:4px; font-size:9px; color:var(--text-tertiary); background:var(--bg-elevated); padding:0 3px;
+  position:absolute; top:-7px; left:6px; font-size:10px; font-weight:600; color:var(--text-tertiary); background:var(--bg-elevated); padding:0 4px;
+  z-index:1;
 }
 .sb-cal-block{
   position:absolute; left:4px; right:4px; background:var(--accent-soft); border:1px solid var(--accent);
@@ -3219,7 +3221,9 @@ function renderMain(){
     default: html += renderHomeView(); break;
   }
 
-  document.getElementById('main').innerHTML = html;
+  var mainEl = document.getElementById('main');
+  mainEl.innerHTML = html;
+  mainEl.classList.toggle('sb-wide-view', state.view === 'calendar' || state.view === 'plays');
   wireMainEvents();
   renderBulkBar();
 }
