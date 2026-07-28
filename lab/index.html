@@ -665,27 +665,36 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 
 /* ---------- Playbook ---------- */
-/* ---------- Brain (folder node graph) ---------- */
+/* ---------- Brain (drill-down folder navigator) ---------- */
+.sb-brain-crumbs{ display:flex; align-items:center; gap:8px; margin:14px 0; font-size:var(--fs-sm); flex-wrap:wrap; }
+.sb-brain-crumb{ display:inline-flex; align-items:center; gap:5px; cursor:pointer; color:var(--text-secondary); font-weight:600; }
+.sb-brain-crumb.active{ color:var(--accent); }
+.sb-brain-crumb:hover{ text-decoration:underline; }
+.sb-brain-crumb-sep{ color:var(--text-tertiary); }
 .sb-brain-canvas-wrap{
   display:flex; align-items:center; justify-content:center;
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
-  padding:10px; margin-top:14px; overflow:hidden;
+  padding:10px; overflow:hidden; transition:opacity 140ms ease, transform 140ms ease;
 }
+.sb-brain-canvas-wrap.zoom-out{ opacity:0; transform:scale(0.8); }
+.sb-brain-canvas-wrap.zoom-in{ animation:sbBrainZoomIn 240ms ease; }
+@keyframes sbBrainZoomIn{ from{ opacity:0; transform:scale(0.8); } to{ opacity:1; transform:scale(1); } }
 .sb-brain-canvas{ width:100%; height:70vh; display:block; }
-.sb-brain-hub{ fill:var(--accent); }
+.sb-brain-hub{ fill:var(--separator); }
 .sb-brain-line{ stroke:var(--separator); stroke-width:2; }
 .sb-brain-node{ cursor:pointer; }
 .sb-brain-node .bn-circle{
-  fill:var(--bg-sidebar); stroke:var(--accent); stroke-width:2; transition:fill 150ms ease, stroke-width 150ms ease;
+  fill:var(--bg-sidebar); stroke:var(--accent); stroke-width:2; transition:stroke-width 150ms ease;
 }
 .sb-brain-node:hover .bn-circle{ stroke-width:3; }
-.sb-brain-node.expanded .bn-circle{ fill:var(--accent); }
 .sb-brain-node .sb-folder-ico-svg{ color:var(--accent); pointer-events:none; }
-.sb-brain-node.expanded .sb-folder-ico-svg{ color:#fff; }
-.sb-brain-label{
-  font-size:12px; font-weight:700; fill:var(--text); cursor:pointer;
-}
+.sb-brain-label{ font-size:12px; font-weight:700; fill:var(--text); cursor:pointer; }
 .sb-brain-label:hover{ fill:var(--accent); text-decoration:underline; }
+.sb-brain-center-node{ cursor:pointer; }
+.bn-center-circle{ fill:var(--accent); }
+.sb-brain-center-node .sb-folder-ico-svg{ color:#fff; pointer-events:none; }
+.sb-brain-center-label{ font-size:15px; font-weight:800; fill:var(--text); cursor:pointer; }
+.sb-brain-center-label:hover{ fill:var(--accent); text-decoration:underline; }
 
 .sb-play-tile{ position:relative; }
 .sb-play-delete{
@@ -1928,86 +1937,125 @@ function renderPlayObject(obj){
 
 /* ---------- Playbook library ---------- */
 /* ============================================================
-   VIEW: BRAIN (folders as an expandable neuron-style node graph)
+   VIEW: BRAIN (drill-down neuron-style folder navigator)
    ============================================================ */
-var brainExpanded = {};
+var brainCenterId = null;
+var brainPath = []; // [{id, name}, ...] from root to current center
 
-function computeBrainNodes(){
+function getBrainCenterFolder(){
+  return brainCenterId ? findFolderById(brainCenterId) : null;
+}
+
+function computeBrainLayout(){
   var W = 1000, H = 620, cx = W/2, cy = H/2;
+  var center = getBrainCenterFolder();
+  var orbit = center ? (center.subfolders || []) : state.folders;
+  var R = Math.min(W,H)/2 - 120;
+  var n = Math.max(orbit.length, 1);
   var nodes = [];
-
-  function placeChildren(folder, x, y, depth, angleStart, angleSpan, radius){
-    var kids = folder.subfolders || [];
-    if(!brainExpanded[folder.id] || !kids.length) return;
-    var n = kids.length;
-    kids.forEach(function(kid, i){
-      var angle = angleStart + (n > 1 ? (angleSpan * (i/(n-1))) : angleSpan/2);
-      var kx = x + Math.cos(angle) * radius;
-      var ky = y + Math.sin(angle) * radius;
-      nodes.push({ folder:kid, x:kx, y:ky, depth:depth, parentX:x, parentY:y, hasChildren: !!(kid.subfolders && kid.subfolders.length) });
-      placeChildren(kid, kx, ky, depth+1, angle - 0.9, 1.8, Math.max(60, radius*0.72));
-    });
-  }
-
-  var roots = state.folders;
-  var n = Math.max(roots.length, 1);
-  var R0 = Math.min(W,H)/2 - 90;
-  roots.forEach(function(folder, i){
+  orbit.forEach(function(folder, i){
     var angle = (Math.PI*2*i/n) - Math.PI/2;
-    var x = cx + Math.cos(angle) * R0;
-    var y = cy + Math.sin(angle) * R0;
-    nodes.push({ folder:folder, x:x, y:y, depth:0, parentX:cx, parentY:cy, hasChildren: !!(folder.subfolders && folder.subfolders.length) });
-    placeChildren(folder, x, y, 1, angle - 0.9, 1.8, 150);
+    nodes.push({ folder:folder, x: cx + Math.cos(angle)*R, y: cy + Math.sin(angle)*R });
   });
-
-  return { nodes:nodes, cx:cx, cy:cy, W:W, H:H };
+  return { nodes:nodes, cx:cx, cy:cy, W:W, H:H, center:center };
 }
 
 function buildBrainSvg(){
-  var data = computeBrainNodes();
+  var data = computeBrainLayout();
   var html = '<svg id="brainSvg" class="sb-brain-canvas" viewBox="0 0 ' + data.W + ' ' + data.H + '" preserveAspectRatio="xMidYMid meet">';
 
-  html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="9" class="sb-brain-hub"/>';
-
   data.nodes.forEach(function(n){
-    html += '<line x1="' + n.parentX + '" y1="' + n.parentY + '" x2="' + n.x + '" y2="' + n.y + '" class="sb-brain-line"/>';
+    html += '<line x1="' + data.cx + '" y1="' + data.cy + '" x2="' + n.x + '" y2="' + n.y + '" class="sb-brain-line"/>';
   });
 
-  data.nodes.forEach(function(n){
-    var r = Math.max(16, 30 - n.depth*5);
-    var noteCount = (n.folder.notes || []).length;
-    html += '<g class="sb-brain-node' + (brainExpanded[n.folder.id] ? ' expanded' : '') + '" data-brain-node="' + n.folder.id + '" transform="translate(' + n.x + ',' + n.y + ')">';
-    html += '<circle r="' + r + '" class="bn-circle"/>';
-    html += '<g transform="translate(' + (-r*0.5) + ',' + (-r*0.5) + ')">' + folderIconSvg(n.folder.icon, r) + '</g>';
+  if(data.center){
+    html += '<g class="sb-brain-center-node" data-brain-center-open="' + data.center.id + '" transform="translate(' + data.cx + ',' + data.cy + ')">';
+    html += '<circle r="36" class="bn-center-circle"/>';
+    html += '<g transform="translate(-16,-16)">' + folderIconSvg(data.center.icon, 32) + '</g>';
     html += '</g>';
-    html += '<text class="sb-brain-label" x="' + n.x + '" y="' + (n.y + r + 16) + '" text-anchor="middle" data-brain-open="' + n.folder.id + '">' + escapeHtml(n.folder.name) + (noteCount ? ' · ' + noteCount : '') + '</text>';
+    html += '<text class="sb-brain-center-label" x="' + data.cx + '" y="' + (data.cy + 54) + '" text-anchor="middle" data-brain-center-open="' + data.center.id + '">' + escapeHtml(data.center.name) + '</text>';
+  } else {
+    html += '<circle cx="' + data.cx + '" cy="' + data.cy + '" r="13" class="sb-brain-hub"/>';
+  }
+
+  data.nodes.forEach(function(n){
+    var hasKids = !!(n.folder.subfolders && n.folder.subfolders.length);
+    var noteCount = (n.folder.notes || []).length;
+    html += '<g class="sb-brain-node" data-brain-node="' + n.folder.id + '" data-has-kids="' + (hasKids?1:0) + '" transform="translate(' + n.x + ',' + n.y + ')">';
+    html += '<circle r="26" class="bn-circle"/>';
+    html += '<g transform="translate(-13,-13)">' + folderIconSvg(n.folder.icon, 26) + '</g>';
+    html += '</g>';
+    html += '<text class="sb-brain-label" x="' + n.x + '" y="' + (n.y + 42) + '" text-anchor="middle" data-brain-open="' + n.folder.id + '">' + escapeHtml(n.folder.name) + (noteCount ? ' · ' + noteCount : '') + '</text>';
   });
 
   html += '</svg>';
   return html;
 }
 
-function renderBrainView(){
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🧠', 22) + ' Brain</div></div></div>';
-  html += '<div class="sb-page-desc">Click a node to reveal what\'s inside it. Click its name to open the folder.</div>';
-  html += '<div class="sb-brain-canvas-wrap">' + buildBrainSvg() + '</div>';
+function renderBrainBreadcrumb(){
+  var html = '<div class="sb-brain-crumbs">';
+  html += '<span class="sb-brain-crumb' + (!brainCenterId ? ' active' : '') + '" data-brain-crumb="">' + folderIconSvg('🧠', 13) + ' Brain</span>';
+  brainPath.forEach(function(p, i){
+    html += '<span class="sb-brain-crumb-sep">›</span>';
+    html += '<span class="sb-brain-crumb' + (i === brainPath.length-1 ? ' active' : '') + '" data-brain-crumb="' + p.id + '">' + escapeHtml(p.name) + '</span>';
+  });
+  html += '</div>';
   return html;
 }
 
-function redrawBrainCanvas(){
-  var wrap = document.querySelector('.sb-brain-canvas-wrap');
-  if(!wrap) return;
-  wrap.innerHTML = buildBrainSvg();
-  wireBrainCanvasEvents();
+function renderBrainView(){
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🧠', 22) + ' Brain</div></div></div>';
+  html += '<div class="sb-page-desc">Click a folder to dive into it. Click its name (or the center) to open it.</div>';
+  html += renderBrainBreadcrumb();
+  html += '<div class="sb-brain-canvas-wrap" id="brainCanvasWrap">' + buildBrainSvg() + '</div>';
+  return html;
 }
 
-function wireBrainCanvasEvents(){
+function diveIntoBrainFolder(id){
+  var folder = findFolderById(id);
+  if(!folder) return;
+  brainPath.push({ id: folder.id, name: folder.name });
+  brainCenterId = id;
+  animateBrainTransition();
+}
+
+function goToBrainCrumb(id){
+  if(!id){
+    brainPath = [];
+    brainCenterId = null;
+  } else {
+    var idx = -1;
+    brainPath.forEach(function(p, i){ if(p.id === id) idx = i; });
+    if(idx === -1) return;
+    brainPath = brainPath.slice(0, idx+1);
+    brainCenterId = id;
+  }
+  animateBrainTransition();
+}
+
+function animateBrainTransition(){
+  var wrap = document.getElementById('brainCanvasWrap');
+  var crumbsEl = document.querySelector('.sb-brain-crumbs');
+  if(!wrap) return;
+  wrap.classList.add('zoom-out');
+  setTimeout(function(){
+    wrap.innerHTML = buildBrainSvg();
+    if(crumbsEl) crumbsEl.outerHTML = renderBrainBreadcrumb();
+    wrap.classList.remove('zoom-out');
+    wrap.classList.add('zoom-in');
+    wireBrainViewEvents();
+    setTimeout(function(){ wrap.classList.remove('zoom-in'); }, 240);
+  }, 140);
+}
+
+function wireBrainViewEvents(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-brain-node]'), function(el){
     el.addEventListener('click', function(e){
       e.stopPropagation();
       var id = el.getAttribute('data-brain-node');
-      brainExpanded[id] = !brainExpanded[id];
-      redrawBrainCanvas();
+      var hasKids = el.getAttribute('data-has-kids') === '1';
+      if(hasKids) diveIntoBrainFolder(id);
+      else navigateTo('folder', { folderId: id });
     });
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-brain-open]'), function(el){
@@ -2016,11 +2064,20 @@ function wireBrainCanvasEvents(){
       navigateTo('folder', { folderId: el.getAttribute('data-brain-open') });
     });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-brain-center-open]'), function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      navigateTo('folder', { folderId: el.getAttribute('data-brain-center-open') });
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-brain-crumb]'), function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      goToBrainCrumb(el.getAttribute('data-brain-crumb'));
+    });
+  });
 }
 
-function wireBrainViewEvents(){
-  wireBrainCanvasEvents();
-}
 
 function renderPlaysView(){
   var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏀', 22) + ' Plays</div></div>';
