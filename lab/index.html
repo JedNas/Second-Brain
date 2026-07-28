@@ -6154,6 +6154,77 @@ if(window.matchMedia){
 /* ============================================================
    INIT
    ============================================================ */
+function seedSubfoldersIfMissing(){
+  var hasAnySubfolder = state.folders.some(function(f){ return f.subfolders && f.subfolders.length; });
+  if(hasAnySubfolder) return;
+
+  function mkFolder(name, icon, notesData, taskList){
+    var f = { id:makeId('f'), name:name, icon:icon, color:null, description:'', summary:'', notes:[], subfolders:[], expanded:true, taskList: !!taskList };
+    (notesData||[]).forEach(function(n){
+      var note = createNote(n.content, n.opts || {});
+      if(n.done) note.done = true;
+      f.notes.push(note);
+    });
+    return f;
+  }
+
+  var subfoldersByParent = {
+    'Ideas': [
+      mkFolder('Drills', '🏀', [
+        { content:'3-man weave with a finish at the rim' },
+        { content:'Closeout and contest drill for perimeter D' }
+      ]),
+      mkFolder('Plays & Sets', '🧭', [
+        { content:'Horns set for a quick middle ball screen' },
+        { content:'Baseline out-of-bounds — box set' }
+      ]),
+      mkFolder('Recruiting', '👤', [
+        { content:'Watch the tall sophomore from the rival school' }
+      ])
+    ],
+    'Reading & Watching': [
+      mkFolder('Books', '📚', [
+        { content:'Thinking Basketball by Ben Taylor' }
+      ]),
+      mkFolder('Game Film', '🎬', [
+        { content:'Clip our Q4 defensive breakdown vs. Eagles' }
+      ])
+    ],
+    'Reflections': [
+      mkFolder('Game Reviews', '📝', [
+        { content:'We rebounded much better after the halftime talk' }
+      ]),
+      mkFolder('Season Notes', '📅', [
+        { content:'Midseason check-in: rotation is settling well' }
+      ])
+    ],
+    'To Do': [
+      mkFolder('This Week', '📅', [
+        { content:'Confirm referees for Thursday scrimmage', opts:{ priority:'medium', dueDate: isoDaysFromNow(1) } }
+      ], true),
+      mkFolder('Admin', '🗄️', [
+        { content:'Submit roster update to the league office', opts:{ priority:'low' } }
+      ], true)
+    ],
+    'To Buy': [
+      mkFolder('Equipment', '🏀', [
+        { content:'Set of 6 practice cones', opts:{ priority:'low' } }
+      ], true),
+      mkFolder('Team Gear', '🛍️', [
+        { content:'Warmup shooting shirts', opts:{ priority:'medium' } }
+      ], true)
+    ]
+  };
+
+  state.folders.forEach(function(folder){
+    var subs = subfoldersByParent[folder.name];
+    if(subs) folder.subfolders = folder.subfolders.concat(subs);
+  });
+
+  invalidateNotesCache();
+  saveState();
+}
+
 function seedSampleDataIfEmpty(){
   if(getAllNotesCached().length > 0) return;
   if(!state.folders.length) return;
@@ -6209,6 +6280,7 @@ function init(){
   loadState().then(function(){
     handleIncomingShare();
     seedSampleDataIfEmpty();
+    seedSubfoldersIfMissing();
     renderAll();
 
     if(getAllNotesCached().length > 20 && !state.settings.lastExportAt){
