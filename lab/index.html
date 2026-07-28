@@ -536,6 +536,22 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-today-block-row:hover{ background:var(--accent-soft); }
 .sb-today-block-row .tb-time{ font-weight:700; color:var(--accent); flex-shrink:0; font-size:var(--fs-xs); }
 .sb-today-block-row .tb-title{ color:var(--text); }
+
+.sb-board-count{ background:var(--accent); color:#fff; }
+.sb-board-add-row{ display:flex; gap:8px; }
+.sb-board-add-row input{
+  flex:1; border:1px solid var(--separator); border-radius:10px; padding:10px 14px;
+  background:var(--bg); color:var(--text); font-size:var(--fs-sm); outline:none;
+}
+.sb-board-add-row input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.sb-board-empty{ font-size:var(--fs-sm); color:var(--text-tertiary); padding:14px 2px 4px; }
+.sb-board-list{ display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.sb-board-item{
+  display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--overlay-1); border-radius:10px; font-size:var(--fs-sm);
+}
+.sb-board-item-text{ flex:1; }
+.sb-board-sort-btn{ width:100%; margin-top:12px; }
 @media (max-width: 720px){
   .sb-today-combined{ grid-template-columns:1fr; gap:16px; }
 }
@@ -1201,6 +1217,7 @@ function defaultState(){
     calendarDate: todayISO(),
     plays: [],
     editingPlayId: null,
+    dailyBoard: [],
     siteIdeas: [
       { id: makeId('idea'), text: 'Horizons (TimeStripe): zakładki skali Day/Week/Month/Quarter/Year + cele bez daty — kod gotowy, schowany z sidebaru', createdAt: Date.now() },
       { id: makeId('idea'), text: 'Review (Weekly digest z AI) — kod gotowy, schowany z sidebaru', createdAt: Date.now() },
@@ -1340,7 +1357,7 @@ function pullRemoteState(){
         // Keep the local copy and push it up instead of letting stale cloud data win.
         return remoteSyncSet({
           folders: state.folders, trash: state.trash, settings: state.settings,
-          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, lastModifiedAt: localModifiedAt
+          digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, dailyBoard: state.dailyBoard, lastModifiedAt: localModifiedAt
         }).catch(function(){});
       }
       remote.pendingImages = [];
@@ -1357,7 +1374,7 @@ function pullRemoteState(){
       // Mirror the freshly-pulled remote data into this device's local copy too.
       storageSet(STORAGE_KEY, JSON.stringify({
         folders: state.folders, trash: state.trash, settings: state.settings,
-        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, lastModifiedAt: state.lastModifiedAt
+        digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, dailyBoard: state.dailyBoard, lastModifiedAt: state.lastModifiedAt
       })).catch(function(){});
     }
   });
@@ -1423,6 +1440,7 @@ function saveLocalSettingsOnly(){
     calendarBlocks: state.calendarBlocks,
     plays: state.plays,
     siteIdeas: state.siteIdeas,
+    dailyBoard: state.dailyBoard,
     lastModifiedAt: state.lastModifiedAt
   };
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave)); }catch(e){}
@@ -1440,6 +1458,7 @@ function saveState(){
     calendarBlocks: state.calendarBlocks,
     plays: state.plays,
     siteIdeas: state.siteIdeas,
+    dailyBoard: state.dailyBoard,
     lastModifiedAt: state.lastModifiedAt
   };
   invalidateNotesCache();
@@ -4230,6 +4249,8 @@ function renderHomeView(){
 
   html += renderTodayOverview();
 
+  html += renderDailyBoard();
+
   html += renderBrainChat();
 
   var RECENT_LIMIT = 10;
@@ -4248,6 +4269,101 @@ function renderHomeView(){
   html += '</div>';
 
   return html;
+}
+
+function addToDailyBoard(text){
+  state.dailyBoard.push({ id: makeId('db'), text: text, createdAt: Date.now() });
+  saveState();
+}
+function removeDailyBoardItem(id){
+  state.dailyBoard = state.dailyBoard.filter(function(x){ return x.id !== id; });
+  saveState();
+}
+
+function renderDailyBoard(){
+  var items = state.dailyBoard;
+  var html = '<div class="sb-section sb-today-card sb-board-card"><div class="sb-section-head"><h3>' + folderIconSvg('📝', 18) + ' Board</h3>';
+  if(items.length) html += '<span class="sb-today-overdue-count sb-board-count">' + items.length + '</span>';
+  html += '</div>';
+  html += '<div class="sb-board-add-row">';
+  html += '<input type="text" id="boardAddInput" placeholder="Jot something down… (Enter to add)">';
+  html += '<button class="sb-btn-text" id="btnBoardAdd">Add</button>';
+  html += '</div>';
+
+  if(items.length){
+    html += '<div class="sb-board-list">';
+    items.forEach(function(it){
+      html += '<div class="sb-board-item"><span class="sb-board-item-text">' + escapeHtml(it.text) + '</span><button class="sb-goal-delete" data-board-delete="' + it.id + '" title="Remove">✕</button></div>';
+    });
+    html += '</div>';
+    html += '<button class="sb-btn-cta sb-board-sort-btn" id="btnBoardSort">Sort it all (' + items.length + ')</button>';
+  } else {
+    html += '<div class="sb-board-empty">Jot down thoughts through the day here — no need to think about where they go. Sort them all at once, whenever you\'re ready.</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function sortDailyBoard(){
+  var items = state.dailyBoard;
+  if(!items.length) return;
+  var combinedText = items.map(function(it){ return it.text; }).join('\n');
+  var sortBtn = document.getElementById('btnBoardSort');
+  if(sortBtn){ sortBtn.disabled = true; sortBtn.textContent = 'Sorting…'; }
+
+  classify(combinedText, [], null).then(function(resultItems){
+    var newReviewItems = resultItems.map(function(item){
+      var existing = findFolderByName(item.folder);
+      var dup = findPossibleDuplicate(item.text);
+      return {
+        note: createNote(item.text, {
+          description: item.description || '',
+          priority: item.priority || 'medium',
+          dueDate: item.dueDate || ''
+        }),
+        reasoning: item.reasoning || '',
+        suggestedName: item.isNew ? item.folder : '',
+        suggestedDesc: item.newFolderDescription || '',
+        suggestedDueDate: item.dueDate || '',
+        suggestedPriority: item.priority || 'medium',
+        existingFolderId: existing ? existing.id : null,
+        isNewSuggestion: !!item.isNew && !existing,
+        duplicate: dup
+      };
+    });
+    state.pendingReview = state.pendingReview.concat(newReviewItems);
+    state.dailyBoard = [];
+    saveState();
+    renderMain();
+  }).catch(function(err){
+    console.error(err);
+    if(sortBtn){ sortBtn.disabled = false; sortBtn.textContent = 'Sort it all (' + items.length + ')'; }
+    showToast('AI request failed: ' + err.message);
+  });
+}
+
+function wireDailyBoardEvents(){
+  function addItem(){
+    var input = document.getElementById('boardAddInput');
+    if(!input) return;
+    var val = input.value.trim();
+    if(!val) return;
+    addToDailyBoard(val);
+    renderMain();
+    setTimeout(function(){ var i2 = document.getElementById('boardAddInput'); if(i2) i2.focus(); }, 0);
+  }
+  var addBtn = document.getElementById('btnBoardAdd');
+  if(addBtn) addBtn.addEventListener('click', addItem);
+  var input = document.getElementById('boardAddInput');
+  if(input) input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); addItem(); } });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-board-delete]'), function(btn){
+    btn.addEventListener('click', function(){
+      removeDailyBoardItem(btn.getAttribute('data-board-delete'));
+      renderMain();
+    });
+  });
+  var sortBtn = document.getElementById('btnBoardSort');
+  if(sortBtn) sortBtn.addEventListener('click', sortDailyBoard);
 }
 
 function renderTodayOverview(){
@@ -4993,6 +5109,7 @@ function wireMainEvents(){
   if(state.view === 'digest') wireDigestViewEvents();
   if(state.view === 'home') wireBrainChatEvents();
   if(state.view === 'home') wireTodayOverviewEvents();
+  if(state.view === 'home') wireDailyBoardEvents();
   if(state.view === 'home') wireTimelineStripEvents();
   if(state.view === 'tasks') wireTaskSortSelect();
 }
@@ -5874,7 +5991,7 @@ function openSettingsModal(){
     state.settings.syncApiKey = key;
     var statusEl = el.querySelector('#syncStatus');
     statusEl.textContent = 'Creating sync bin…';
-    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas };
+    var toSave = { folders: state.folders, trash: state.trash, settings: state.settings, digest: state.digest, taskSortOrder: state.taskSortOrder, goals: state.goals, calendarBlocks: state.calendarBlocks, plays: state.plays, siteIdeas: state.siteIdeas, dailyBoard: state.dailyBoard };
     remoteSyncCreateBin(toSave).then(function(binId){
       state.settings.syncBinId = binId;
       state.settings.lastSyncAt = Date.now();
