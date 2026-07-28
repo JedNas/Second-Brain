@@ -431,6 +431,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-page-desc{ color:var(--text-secondary); font-size:var(--fs-sm); margin-top:6px; max-width:60ch; }
 .sb-page-actions{ display:flex; gap:6px; flex-wrap:wrap; }
 .sb-page-actions button{
+  display:inline-flex; align-items:center; gap:6px;
   border:1px solid var(--separator); background:var(--bg-elevated); color:var(--text-secondary);
   font-size:var(--fs-xs); font-weight:600; padding:7px 12px; border-radius:999px; transition:all 150ms ease;
 }
@@ -555,6 +556,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-note-top{ display:flex; align-items:flex-start; gap:10px; }
 .sb-note-check{ width:20px; height:20px; border-radius:50%; border:2px solid var(--separator); flex-shrink:0; background:transparent; margin-top:1px; transition:all 150ms ease; }
 .sb-note-check.done{ background:var(--low); border-color:var(--low); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
+.sb-note-check.done .sb-folder-ico-svg{ color:#fff; }
 .sb-note-check:hover{ border-color:var(--accent); }
 .sb-note-body{ flex:1; min-width:0; }
 .sb-note-content{ font-size:var(--fs-md); font-weight:500; cursor:pointer; word-break:break-word; }
@@ -565,8 +567,8 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-badge-priority.low{ background:var(--low-soft); color:var(--low); }
 .sb-badge-priority.medium{ background:var(--warning-soft); color:var(--warning); }
 .sb-badge-priority.high{ background:var(--danger-soft); color:var(--danger); }
-.sb-badge-due{ font-size:var(--fs-2xs); color:var(--text-secondary); background:var(--overlay-2); padding:2px 8px; border-radius:999px; }
-.sb-badge-theme{ font-size:var(--fs-2xs); color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:999px; cursor:pointer; }
+.sb-badge-due{ display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-2xs); color:var(--text-secondary); background:var(--overlay-2); padding:2px 8px; border-radius:999px; }
+.sb-badge-theme{ display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-2xs); color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:999px; cursor:pointer; }
 
 .sb-horizon-tabs{ display:flex; gap:6px; margin:16px 0; flex-wrap:wrap; }
 .sb-horizon-tab{
@@ -714,7 +716,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-wiki-link:hover{ text-decoration:underline; }
 
 .sb-empty{ text-align:center; padding:50px 20px; color:var(--text-tertiary); }
-.sb-empty .e-ico{ font-size:34px; margin-bottom:10px; }
+.sb-empty .e-ico{ display:flex; align-items:center; justify-content:center; margin-bottom:10px; color:var(--text-tertiary); }
 .sb-empty .e-title{ font-weight:600; color:var(--text-secondary); font-size:var(--fs-md); }
 .sb-empty .e-sub{ font-size:var(--fs-xs); margin-top:4px; }
 
@@ -963,8 +965,17 @@ var FOLDER_ICON_PATHS = {
 
   '🔒': '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   '🛡️': '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  '🔁': '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   '✨': '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 3.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"/>',
-  '🗑': '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>'
+  '🗑': '<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>',
+  '↪': '<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+  '🔀': '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 8v8"/><path d="M6 12c0-3 3-6 6-6h4"/>',
+  '⚙': '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M4.2 7.5l2.2 1.3M17.6 15.2l2.2 1.3M3 12h2.5M18.5 12H21M4.2 16.5l2.2-1.3M17.6 8.8l2.2-1.3M7.5 4.2l1.3 2.2M15.2 17.6l1.3 2.2M7.5 19.8l1.3-2.2M15.2 6.4l1.3-2.2"/>',
+  '🔥': '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  '🔍': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  '⚠': '<path d="M12 3.5l9.5 16.5H2.5z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>',
+  '✋': '<path d="M9 12V6a1.5 1.5 0 0 1 3 0v5"/><path d="M12 11V4.5a1.5 1.5 0 0 1 3 0V11"/><path d="M15 11V6a1.5 1.5 0 0 1 3 0v9c0 3.3-2.7 6-6 6h-1c-3 0-4-1-5.5-3.5L3 13a1.4 1.4 0 0 1 2.3-1.6L7 14"/>',
+  '✓': '<path d="M4 12.5l5 5L20 6"/>'
 };
 
 var FOLDER_ICON_CATEGORIES = [
@@ -1873,7 +1884,7 @@ function renderPlayObject(obj){
 
 /* ---------- Playbook library ---------- */
 function renderPlaysView(){
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🏀 Plays</div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏀', 22) + ' Plays</div></div>';
   html += '<div class="sb-page-actions"><button class="sb-btn-cta" id="btnNewPlay">+ New Play</button></div></div>';
   html += '<div class="sb-page-desc">Draw plays and drills, save them to your library.</div>';
 
@@ -1897,7 +1908,7 @@ function renderPlaysView(){
    ============================================================ */
 function renderIdeasView(){
   var ideas = state.siteIdeas.slice().sort(function(a,b){ return b.createdAt - a.createdAt; });
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">💡 Ideas</div></div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('💡', 22) + ' Ideas</div></div></div>';
   html += '<div class="sb-page-desc">Parking lot for feature ideas we\'re leaving for later. Temporary — delete this whole tab once the site feels done.</div>';
 
   html += '<div class="sb-goal-add-row" style="margin-top:14px;">';
@@ -2047,7 +2058,7 @@ function renderPlayEditorView(){
   });
   html += '</div>';
 
-  html += '<button class="sb-btn-text" id="btnToolClear" style="margin-top:12px;width:100%;">✋ Select / Move</button>';
+  html += '<button class="sb-btn-text" id="btnToolClear" style="margin-top:12px;width:100%;">' + folderIconSvg('✋', 14) + ' Select / Move</button>';
   html += '<div class="sb-play-hint">Click a tool, then click (or drag for lines) on the court. Click an object in Select mode + press Delete to remove it.</div>';
   html += '</div>';
 
@@ -2986,9 +2997,9 @@ function renderBottomNav(){
   function b(view, ico, label, isAdd){
     var active = state.view === view ? ' active' : '';
     if(isAdd) return '<button class="bn-add" data-nav="' + view + '"><span>+</span></button>';
-    return '<button class="' + active.trim() + '" data-nav="' + view + '"><span class="bn-ico">' + ico + '</span>' + label + '</button>';
+    return '<button class="' + active.trim() + '" data-nav="' + view + '"><span class="bn-ico">' + folderIconSvg(ico, 17) + '</span>' + label + '</button>';
   }
-  el.innerHTML = b('home','⌂','Home') + b('home','＋','Add', true) + b('tasks','✓','Tasks') + b('digest','✨','Review');
+  el.innerHTML = b('home','🏠','Home') + b('home','+','Add', true) + b('tasks','✅','Tasks') + b('digest','✨','Review');
   Array.prototype.forEach.call(el.querySelectorAll('button'), function(btn){
     btn.addEventListener('click', function(){
       var v = btn.getAttribute('data-nav');
@@ -3230,7 +3241,7 @@ function renderCaptureBox(){
     html += '</div>';
   }
   if(state.pendingVoiceNote){
-    html += '<div class="sb-voice-memo"><span class="vm-ico">🎙</span><audio controls src="' + escapeHtml(state.pendingVoiceNote.dataUrl) + '"></audio><button data-remove-voice="1" title="Remove voice note">✕</button></div>';
+    html += '<div class="sb-voice-memo"><span class="vm-ico">' + micIconSvg(14) + '</span><audio controls src="' + escapeHtml(state.pendingVoiceNote.dataUrl) + '"></audio><button data-remove-voice="1" title="Remove voice note">✕</button></div>';
   }
 
   html += '<div class="sb-capture-row">';
@@ -3517,7 +3528,7 @@ function renderReviewPanel(){
     html += '<div class="sb-review-text">' + escapeHtml(item.note.content) + '</div>';
     if(item.reasoning) html += '<div class="sb-review-reason">' + escapeHtml(item.reasoning) + '</div>';
     if(item.duplicate){
-      html += '<div class="sb-review-dupe" data-goto-dupe="' + item.duplicate.note.id + '" data-dupe-folder="' + item.duplicate.folder.id + '">⚠ Might be similar to "' + escapeHtml(item.duplicate.note.content.slice(0,60)) + '" in ' + escapeHtml(item.duplicate.folder.name) + ' — click to view</div>';
+      html += '<div class="sb-review-dupe" data-goto-dupe="' + item.duplicate.note.id + '" data-dupe-folder="' + item.duplicate.folder.id + '">' + folderIconSvg('⚠', 13) + ' Might be similar to "' + escapeHtml(item.duplicate.note.content.slice(0,60)) + '" in ' + escapeHtml(item.duplicate.folder.name) + ' — click to view</div>';
     }
     html += '<textarea class="sb-text-input sb-review-desc" data-review-desc="' + i + '" rows="2" placeholder="Add extra detail (price, notes, context)…">' + escapeHtml(item.note.description || '') + '</textarea>';
     html += '<div class="sb-review-controls">';
@@ -3721,14 +3732,14 @@ function renderTopHeader(){
     + '</svg><span class="sb-header-brand-label">Second <span class="sb-header-brand-accent">Brain</span></span></div>';
 
   html += '<div class="sb-search-wrap sb-header-search">';
-  html += '<span class="sb-search-ico">🔍</span>';
+  html += '<span class="sb-search-ico">' + folderIconSvg('🔍', 15) + '</span>';
   html += '<input type="text" class="sb-search" id="searchInput" placeholder="Search your second brain…" value="' + escapeHtml(searchDraft) + '">';
   html += '<div id="searchResults"></div>';
   html += '</div>';
 
   html += '<div class="sb-header-right">';
-  html += '<button class="sb-icon-btn" id="btnQuickTheme" title="Toggle theme">' + (isDark ? '☀' : '🌙') + '</button>';
-  html += '<button class="sb-icon-btn" id="btnSettingsTop" title="Settings">⚙</button>';
+  html += '<button class="sb-icon-btn" id="btnQuickTheme" title="Toggle theme">' + (isDark ? folderIconSvg('☀️', 16) : folderIconSvg('🌙', 16)) + '</button>';
+  html += '<button class="sb-icon-btn" id="btnSettingsTop" title="Settings">' + folderIconSvg('⚙', 16) + '</button>';
   html += '<button class="sb-profile-chip" id="btnProfileMenu">';
   html += '<span class="sb-profile-avatar">' + escapeHtml(getInitials(p.profileName)) + '</span>';
   html += '<span class="sb-profile-text"><span class="sb-profile-name">' + escapeHtml(p.profileName || 'You') + '</span>';
@@ -3826,7 +3837,7 @@ function renderSearchDropdown(matches){
   var html = '<div class="sb-search-dropdown">';
   matches.forEach(function(m, i){
     if(m.type === 'folder'){
-      html += '<div class="sb-search-item" data-result-index="' + i + '"><span class="si-title">📁 ' + escapeHtml(m.folder.name) + '</span><span class="si-meta">' + escapeHtml(m.path) + '</span></div>';
+      html += '<div class="sb-search-item" data-result-index="' + i + '"><span class="si-title">' + folderIconSvg('📁', 13) + ' ' + escapeHtml(m.folder.name) + '</span><span class="si-meta">' + escapeHtml(m.path) + '</span></div>';
     } else {
       html += '<div class="sb-search-item" data-result-index="' + i + '"><span class="si-title">' + escapeHtml(m.note.content.slice(0,60)) + '</span><span class="si-meta">in ' + escapeHtml(m.path) + '</span></div>';
     }
@@ -3870,7 +3881,7 @@ function renderNoteLinkChip(note){
 
 function renderNoteVoiceChip(note){
   if(!note.voiceNote) return '';
-  return '<div class="sb-voice-memo" onclick="event.stopPropagation();"><span class="vm-ico">🎙</span><audio controls src="' + escapeHtml(note.voiceNote.dataUrl) + '"></audio></div>';
+  return '<div class="sb-voice-memo" onclick="event.stopPropagation();"><span class="vm-ico">' + micIconSvg(14) + '</span><audio controls src="' + escapeHtml(note.voiceNote.dataUrl) + '"></audio></div>';
 }
 
 function renderNoteDescBlock(note){
@@ -3891,9 +3902,9 @@ function renderNoteCard(note, folder, opts){
     var key = folder.id + '::' + note.id;
     html += '<input type="checkbox" class="sb-note-select" data-select-key="' + key + '" ' + (state.selected[key] ? 'checked' : '') + ' style="margin-top:4px;width:16px;height:16px;">';
   } else if(isTask){
-    html += '<button class="sb-note-check' + (note.done ? ' done' : '') + '" data-toggle-done="1">' + (note.done ? '✓' : '') + '</button>';
+    html += '<button class="sb-note-check' + (note.done ? ' done' : '') + '" data-toggle-done="1">' + (note.done ? folderIconSvg('✓', 12) : '') + '</button>';
   } else {
-    html += '<button class="sb-note-check" data-toggle-pin="1" title="Pin" style="border:none;background:none;font-size:14px;color:' + (note.pinned ? 'var(--accent)' : 'var(--text-tertiary)') + ';width:20px;">' + (note.pinned ? '📌' : '') + '</button>';
+    html += '<button class="sb-note-check" data-toggle-pin="1" title="Pin" style="border:none;background:none;color:' + (note.pinned ? 'var(--accent)' : 'transparent') + ';width:20px;display:flex;align-items:center;justify-content:center;">' + (note.pinned ? folderIconSvg('📍', 13) : '') + '</button>';
   }
 
   html += '<div class="sb-note-body">';
@@ -3903,8 +3914,8 @@ function renderNoteCard(note, folder, opts){
   html += '<span class="sb-note-time">' + escapeHtml(note.time) + '</span>';
   if(isTask && note.priority) html += '<span class="sb-badge-priority ' + note.priority + '">' + note.priority + '</span>';
   if(isTask && note.dueDate) html += '<span class="sb-badge-due' + (overdue ? ' overdue' : '') + '">' + (overdue ? 'Overdue · ' : '') + escapeHtml(note.dueDate) + '</span>';
-  if(note.recurrence) html += '<span class="sb-badge-due">🔁 ' + note.recurrence + '</span>';
-  if(note.theme) html += '<span class="sb-badge-theme" data-theme-jump="' + escapeHtml(note.theme) + '">🏷️ ' + escapeHtml(note.theme) + '</span>';
+  if(note.recurrence) html += '<span class="sb-badge-due">' + folderIconSvg('🔁', 11) + ' ' + note.recurrence + '</span>';
+  if(note.theme) html += '<span class="sb-badge-theme" data-theme-jump="' + escapeHtml(note.theme) + '">' + folderIconSvg('🏷️', 11) + ' ' + escapeHtml(note.theme) + '</span>';
   if(!opts.hideFolder) html += '<span class="sb-note-time" data-folder-jump="' + folder.id + '" style="cursor:pointer;">in ' + escapeHtml(folder.name) + '</span>';
   html += '</div>';
 
@@ -3982,7 +3993,7 @@ var brainChatShouldFocus = false;
 
 function renderBrainChat(){
   var html = '<div class="sb-brainchat">';
-  html += '<div class="sb-brainchat-head"><h3>✨ Ask your second brain</h3>';
+  html += '<div class="sb-brainchat-head"><h3>' + folderIconSvg('✨', 16) + ' Ask your second brain</h3>';
   if(brainChatMessages.length) html += '<button class="sb-btn-text" id="brainChatClear">Clear</button>';
   html += '</div>';
   html += '<div class="sb-brainchat-messages" id="brainChatMessages">';
@@ -4117,7 +4128,7 @@ function renderHomeView(){
   var folderCount = flattenFolders().length;
   var streak = computeStreak();
 
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">⌂ Home</div></div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏠', 22) + ' Home</div></div></div>';
 
   html += renderBrainChat();
 
@@ -4155,7 +4166,7 @@ function getUpcoming(){
 }
 
 function emptyState(ico, title, sub){
-  return '<div class="sb-empty"><div class="e-ico">' + ico + '</div><div class="e-title">' + escapeHtml(title) + '</div><div class="e-sub">' + escapeHtml(sub) + '</div></div>';
+  return '<div class="sb-empty"><div class="e-ico">' + folderIconSvg(ico, 32) + '</div><div class="e-title">' + escapeHtml(title) + '</div><div class="e-sub">' + escapeHtml(sub) + '</div></div>';
 }
 
 /* ============================================================
@@ -4171,12 +4182,12 @@ function renderFolderView(){
   if(folder.summary) html += '<div class="sb-page-desc">' + escapeHtml(folder.summary) + '</div>';
   html += '</div>';
   html += '<div class="sb-page-actions">';
-  html += '<button data-folder-print="1">🖨 Print</button>';
-  html += '<button data-folder-edit="' + folder.id + '">✎ Edit</button>';
-  html += '<button data-folder-move="' + folder.id + '">↪ Move</button>';
-  html += '<button data-folder-merge="' + folder.id + '">🔀 Merge</button>';
-  html += '<button data-folder-delete="' + folder.id + '">🗑 Delete</button>';
-  html += '<button data-select-mode="1">' + (state.selectMode ? 'Cancel' : '☑ Select') + '</button>';
+  html += '<button data-folder-print="1">' + folderIconSvg('🖨️', 14) + ' Print</button>';
+  html += '<button data-folder-edit="' + folder.id + '">' + folderIconSvg('📝', 14) + ' Edit</button>';
+  html += '<button data-folder-move="' + folder.id + '">' + folderIconSvg('↪', 14) + ' Move</button>';
+  html += '<button data-folder-merge="' + folder.id + '">' + folderIconSvg('🔀', 14) + ' Merge</button>';
+  html += '<button data-folder-delete="' + folder.id + '">' + folderIconSvg('🗑', 14) + ' Delete</button>';
+  html += '<button data-select-mode="1">' + (state.selectMode ? 'Cancel' : (folderIconSvg('✅', 13) + ' Select')) + '</button>';
   html += '</div></div>';
 
   if(folder.subfolders.length){
@@ -4208,7 +4219,7 @@ function renderFolderView(){
     }
   }
   if(!notes.length){
-    html += emptyState('📭','No notes yet','Capture something and file it here.');
+    html += emptyState('📁','No notes yet','Capture something and file it here.');
   } else {
     html += '<div class="sb-note-list">';
     notes.forEach(function(n){ html += renderNoteCard(n, folder, { expanded: n.id === expandedNoteId, hideFolder:true }); });
@@ -4286,7 +4297,7 @@ function renderCalendarView(){
   var view = state.calendarView || 'day';
   var date = state.calendarDate || todayISO();
 
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">📅 Calendar</div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('📅', 22) + ' Calendar</div></div>';
   html += '<div class="sb-page-actions">';
   html += '<button class="sb-horizon-tab' + (view==='day'?' active':'') + '" data-cal-view="day">Day</button>';
   html += '<button class="sb-horizon-tab' + (view==='week'?' active':'') + '" data-cal-view="week">Week</button>';
@@ -4320,7 +4331,7 @@ function renderUnscheduledPanel(){
   var tasks = getUnscheduledTasks();
   var html = '<div class="sb-cal-unsched"><h4>Unscheduled tasks</h4>';
   if(!tasks.length){
-    html += '<div class="sb-cal-unsched-empty">Nothing to schedule 🎉</div>';
+    html += '<div class="sb-cal-unsched-empty">Nothing to schedule</div>';
   } else {
     tasks.forEach(function(item){
       html += '<div class="sb-cal-unsched-item" draggable="true" data-cal-task-note="' + item.note.id + '" data-cal-task-folder="' + item.folder.id + '">' + escapeHtml(item.note.content) + '</div>';
@@ -4541,7 +4552,7 @@ function wireCalendarViewEvents(){
 
 function renderHorizonsView(){
   var scale = state.horizonsScale || 'week';
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🧭 Horizons</div></div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🧭', 22) + ' Horizons</div></div></div>';
   html += '<div class="sb-page-desc">Plan across time scales — from today\'s tasks to your yearly goals, inspired by TimeStripe.</div>';
 
   html += '<div class="sb-horizon-tabs">';
@@ -4596,7 +4607,7 @@ function renderGoalsBlock(horizon, label){
     html += '<div class="sb-goal-list">';
     goals.forEach(function(g){
       html += '<div class="sb-goal-row' + (g.done?' done':'') + '" data-goal-id="' + g.id + '">';
-      html += '<button class="sb-note-check' + (g.done?' done':'') + '" data-goal-toggle="' + g.id + '">' + (g.done?'✓':'') + '</button>';
+      html += '<button class="sb-note-check' + (g.done?' done':'') + '" data-goal-toggle="' + g.id + '">' + (g.done?folderIconSvg('✓', 12):'') + '</button>';
       html += '<span class="sb-goal-text">' + escapeHtml(g.content) + '</span>';
       html += '<button class="sb-goal-delete" data-goal-delete="' + g.id + '" title="Delete">✕</button>';
       html += '</div>';
@@ -4666,7 +4677,7 @@ function renderThemesView(){
   });
   var themeNames = Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); });
 
-  var html = '<div class="sb-page-head"><div><div class="sb-page-title">🏷️ Themes</div></div></div>';
+  var html = '<div class="sb-page-head"><div><div class="sb-page-title">' + folderIconSvg('🏷️', 22) + ' Themes</div></div></div>';
   html += '<div class="sb-page-desc">Browse notes by theme, across every folder — inspired by Robert Greene\'s notecard system. Open a note\'s ⋯ menu and choose "Set theme…" to add one.</div>';
   if(!themeNames.length){
     html += emptyState('🏷️','No themes yet','Set a theme on any note to start grouping ideas across your whole second brain.');
@@ -4697,7 +4708,7 @@ function wireThemesViewEvents(){
 }
 
 function renderTasksView(){
-  var html = '<div class="sb-page-head"><div class="sb-page-title">✓ Tasks</div>';
+  var html = '<div class="sb-page-head"><div class="sb-page-title">' + folderIconSvg('✅', 22) + ' Tasks</div>';
   html += '<div class="sb-page-actions">' + renderTaskSortSelect() + '</div></div>';
 
   if(state.taskSortOrder === 'priority-desc' || state.taskSortOrder === 'priority-asc'){
@@ -4714,7 +4725,7 @@ function renderTasksView(){
       items.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
       html += '</div></div>';
     });
-    if(!any2) html += emptyState('✓','No tasks yet','Tasks you file into To Do or To Buy show up here.');
+    if(!any2) html += emptyState('✅','No tasks yet','Tasks you file into To Do or To Buy show up here.');
     return html;
   }
 
@@ -4737,7 +4748,7 @@ function renderTasksView(){
     items.forEach(function(item){ html += renderNoteCard(item.note, item.folder, { expanded: item.note.id === expandedNoteId }); });
     html += '</div></div>';
   });
-  if(!any) html += emptyState('✓','No tasks yet','Tasks you file into To Do or To Buy show up here.');
+  if(!any) html += emptyState('✅','No tasks yet','Tasks you file into To Do or To Buy show up here.');
   return html;
 }
 
@@ -4745,7 +4756,7 @@ function renderTasksView(){
    VIEW: TRASH
    ============================================================ */
 function renderTrashView(){
-  var html = '<div class="sb-page-head"><div class="sb-page-title">🗑 Trash</div></div>';
+  var html = '<div class="sb-page-head"><div class="sb-page-title">' + folderIconSvg('🗑', 22) + ' Trash</div></div>';
   html += '<div class="sb-page-desc">Deleted items stay here until you remove them for good.</div>';
 
   html += '<div class="sb-section"><div class="sb-section-head"><h3>Folders</h3></div>';
@@ -4788,7 +4799,7 @@ function renderTrashView(){
    VIEW: DIGEST (Review)
    ============================================================ */
 function renderDigestView(){
-  var html = '<div class="sb-page-head"><div class="sb-page-title">✨ Weekly Review</div>';
+  var html = '<div class="sb-page-head"><div class="sb-page-title">' + folderIconSvg('✨', 22) + ' Weekly Review</div>';
   html += '<div class="sb-page-actions"><button class="sb-btn-cta" id="btnGenerateDigest" style="border-radius:999px;padding:9px 18px;background:var(--accent);color:#fff;border:none;font-weight:700;">Generate</button></div>';
   html += '</div>';
   if(state.digest.generatedAt){
