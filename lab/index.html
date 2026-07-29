@@ -1781,11 +1781,26 @@ function createCalendarBlock(opts){
     startMinutes: opts.startMinutes,
     duration: opts.duration || 60,
     linkedFolderId: opts.linkedFolderId || null,
-    linkedNoteId: opts.linkedNoteId || null
+    linkedNoteId: opts.linkedNoteId || null,
+    recurrence: opts.recurrence || null
   };
 }
+function blockOccursOnDate(b, date){
+  if(b.date === date) return true;
+  if(!b.recurrence) return false;
+  if(date < b.date) return false;
+  var start = isoToDate(b.date), target = isoToDate(date);
+  if(b.recurrence === 'daily') return true;
+  if(b.recurrence === 'weekdays'){
+    var dow = target.getDay();
+    return dow >= 1 && dow <= 5;
+  }
+  if(b.recurrence === 'weekly') return start.getDay() === target.getDay();
+  if(b.recurrence === 'monthly') return start.getDate() === target.getDate();
+  return false;
+}
 function getBlocksForDate(date){
-  return state.calendarBlocks.filter(function(b){ return b.date === date; });
+  return state.calendarBlocks.filter(function(b){ return blockOccursOnDate(b, date); });
 }
 function deleteCalendarBlock(id){
   state.calendarBlocks = state.calendarBlocks.filter(function(b){ return b.id !== id; });
@@ -4639,7 +4654,7 @@ function renderCalendarDayColumn(date, wide){
     html += '<div class="sb-cal-block" data-cal-block-id="' + b.id + '" style="top:' + top + 'px;height:' + height + 'px;">';
     html += '<button class="sb-cal-block-delete" data-cal-block-delete="' + b.id + '">✕</button>';
     html += '<div class="sb-cal-block-title">' + escapeHtml(b.title) + '</div>';
-    html += '<div class="sb-cal-block-time">' + minutesToLabel(b.startMinutes) + '</div>';
+    html += '<div class="sb-cal-block-time">' + minutesToLabel(b.startMinutes) + (b.recurrence ? ' ' + folderIconSvg('🔁', 9) : '') + '</div>';
     html += '<div class="sb-cal-resize-handle" data-cal-resize="' + b.id + '"></div>';
     html += '</div>';
   });
@@ -4657,6 +4672,11 @@ function openNewBlockModal(date, startMinutes){
       '<option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option>' +
       '<option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option>' +
     '</select></div>' +
+    '<div class="sb-field"><label>Repeat</label><select id="newBlockRepeat" class="sb-select" style="width:100%;">' +
+      '<option value="">Does not repeat</option><option value="daily">Every day</option>' +
+      '<option value="weekdays">Every weekday (Mon–Fri)</option><option value="weekly">Every week</option>' +
+      '<option value="monthly">Every month</option>' +
+    '</select></div>' +
     '<div class="sb-modal-foot"><button class="sb-btn-text" id="newBlockCancel">Cancel</button><button class="sb-btn-cta" id="newBlockSave">Add block</button></div>'
   );
   var titleInput = el.querySelector('#newBlockTitle');
@@ -4666,7 +4686,8 @@ function openNewBlockModal(date, startMinutes){
     var title = titleInput.value.trim();
     if(!title) return;
     var duration = parseInt(el.querySelector('#newBlockDuration').value, 10);
-    state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration }));
+    var recurrence = el.querySelector('#newBlockRepeat').value || null;
+    state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration, recurrence:recurrence }));
     saveState();
     closeModal();
     renderMain();
@@ -4767,8 +4788,16 @@ function wireCalendarViewEvents(){
     var delBtn = block.querySelector('[data-cal-block-delete]');
     if(delBtn) delBtn.addEventListener('click', function(e){
       e.stopPropagation();
-      deleteCalendarBlock(blockId);
-      renderMain();
+      var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+      if(b && b.recurrence){
+        openConfirmModal('Delete this repeating event?', 'This removes every occurrence, not just this one.', function(){
+          deleteCalendarBlock(blockId);
+          renderMain();
+        });
+      } else {
+        deleteCalendarBlock(blockId);
+        renderMain();
+      }
     });
 
     block.addEventListener('pointerdown', function(e){
