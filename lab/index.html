@@ -5016,6 +5016,10 @@ function wireCalendarViewEvents(){
       var startY = e.clientY;
       var startTop = parseFloat(block.style.top);
       var moved = false;
+      var timeEl = block.querySelector('.sb-cal-block-time');
+      var liveBlockRef = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+      var blockDuration = liveBlockRef.duration;
+      var recurIconHtml = liveBlockRef.recurrence ? ' ' + folderIconSvg('🔁', 9) : '';
       function onMove(e2){
         var dy = e2.clientY - startY;
         if(Math.abs(dy) > 3) moved = true;
@@ -5023,6 +5027,10 @@ function wireCalendarViewEvents(){
         var snappedTop = Math.round(rawTop / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4);
         if(parseFloat(block.style.top) !== snappedTop){
           block.style.top = snappedTop + 'px';
+          if(timeEl){
+            var newStartMin = CAL_HOUR_START*60 + Math.round(snappedTop / CAL_MIN_PX);
+            timeEl.innerHTML = minutesToLabel(newStartMin) + ' – ' + minutesToLabel(newStartMin + blockDuration) + recurIconHtml;
+          }
         }
       }
       function onUp(){
@@ -5051,12 +5059,20 @@ function wireCalendarViewEvents(){
       handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
       var startY = e.clientY;
       var startHeight = parseFloat(block.style.height);
+      var timeElR = block.querySelector('.sb-cal-block-time');
+      var liveBlockRefR = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+      var blockStartMin = liveBlockRefR.startMinutes;
+      var recurIconHtmlR = liveBlockRefR.recurrence ? ' ' + folderIconSvg('🔁', 9) : '';
       function onMove(e2){
         var dy = e2.clientY - startY;
         var rawHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
         var snappedHeight = Math.max(CAL_HOUR_HEIGHT/4, Math.round(rawHeight / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4));
         if(parseFloat(block.style.height) !== snappedHeight){
           block.style.height = snappedHeight + 'px';
+          if(timeElR){
+            var newDur = Math.max(15, Math.round(snappedHeight / CAL_MIN_PX));
+            timeElR.innerHTML = minutesToLabel(blockStartMin) + ' – ' + minutesToLabel(blockStartMin + newDur) + recurIconHtmlR;
+          }
         }
       }
       function onUp(){
