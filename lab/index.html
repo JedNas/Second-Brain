@@ -685,6 +685,37 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   position:absolute; left:0; right:0; bottom:0; height:10px; cursor:ns-resize; touch-action:none;
 }
 
+/* ---------- Calendar: Month view ---------- */
+.sb-cal-month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--separator); border:1px solid var(--separator); border-radius:var(--radius-lg); overflow:hidden; }
+.sb-cal-month-dow{ background:var(--bg-elevated); text-align:center; font-size:var(--fs-xs); font-weight:700; color:var(--text-tertiary); padding:8px 0; }
+.sb-cal-month-cell{ background:var(--bg-elevated); min-height:100px; padding:6px; cursor:pointer; }
+.sb-cal-month-cell:hover{ background:var(--overlay-1); }
+.sb-cal-month-cell.outside{ opacity:0.4; }
+.sb-cal-month-cell.today .mc-num{ background:var(--accent); color:#fff; border-radius:50%; }
+.mc-num{ font-size:var(--fs-sm); font-weight:700; width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-bottom:4px; }
+.mc-events{ display:flex; flex-direction:column; gap:2px; }
+.mc-event{ font-size:10px; background:var(--accent-soft); color:var(--accent); border-radius:5px; padding:2px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mc-event:hover{ background:var(--accent); color:#fff; }
+.mc-more{ font-size:9px; color:var(--text-tertiary); padding:2px 5px; }
+
+/* ---------- Calendar: Year view ---------- */
+.sb-cal-year-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.sb-cal-year-month{ background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg); padding:10px; }
+.sb-cal-year-month-title{ font-size:var(--fs-sm); font-weight:700; margin-bottom:6px; cursor:pointer; }
+.sb-cal-year-month-title:hover{ color:var(--accent); }
+.sb-cal-year-dow{ display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:8px; color:var(--text-tertiary); margin-bottom:2px; }
+.sb-cal-year-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.sb-cal-year-days .yd{ text-align:center; font-size:9px; padding:2px 0; border-radius:4px; cursor:pointer; position:relative; }
+.sb-cal-year-days .yd:hover{ background:var(--overlay-2); }
+.sb-cal-year-days .yd.today{ background:var(--accent); color:#fff; font-weight:700; }
+.sb-cal-year-days .yd.has-events:not(.today)::after{
+  content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:3px; height:3px; border-radius:50%; background:var(--accent);
+}
+@media (max-width: 900px){
+  .sb-cal-year-grid{ grid-template-columns:repeat(2,1fr); }
+}
+
 /* ---------- Playbook ---------- */
 /* ---------- Brain (full-page comfortable folder tree) ---------- */
 .sb-brain-tree{ margin-top:6px; }
@@ -1786,6 +1817,7 @@ function createCalendarBlock(opts){
   };
 }
 function blockOccursOnDate(b, date){
+  if(b.excludedDates && b.excludedDates.indexOf(date) !== -1) return false;
   if(b.date === date) return true;
   if(!b.recurrence) return false;
   if(date < b.date) return false;
@@ -4563,10 +4595,29 @@ function getWeekStart(iso){
   d.setDate(d.getDate() + diff);
   return todayISO(d);
 }
+function addCalendarStep(dateIso, view, dir){
+  if(view === 'day') return addDaysIso(dateIso, dir);
+  if(view === 'week') return addDaysIso(dateIso, dir*7);
+  var d = isoToDate(dateIso);
+  if(view === 'month'){
+    return todayISO(new Date(d.getFullYear(), d.getMonth()+dir, d.getDate()));
+  }
+  if(view === 'year'){
+    return todayISO(new Date(d.getFullYear()+dir, d.getMonth(), d.getDate()));
+  }
+  return dateIso;
+}
+
 function calendarLabel(date, view){
   var d = isoToDate(date);
   if(view === 'day'){
     return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  }
+  if(view === 'month'){
+    return d.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+  }
+  if(view === 'year'){
+    return String(d.getFullYear());
   }
   var start = getWeekStart(date);
   var end = addDaysIso(start, 6);
@@ -4582,6 +4633,8 @@ function renderCalendarView(){
   html += '<div class="sb-page-actions">';
   html += '<button class="sb-horizon-tab' + (view==='day'?' active':'') + '" data-cal-view="day">Day</button>';
   html += '<button class="sb-horizon-tab' + (view==='week'?' active':'') + '" data-cal-view="week">Week</button>';
+  html += '<button class="sb-horizon-tab' + (view==='month'?' active':'') + '" data-cal-view="month">Month</button>';
+  html += '<button class="sb-horizon-tab' + (view==='year'?' active':'') + '" data-cal-view="year">Year</button>';
   html += '</div></div>';
 
   html += '<div class="sb-cal-nav">';
@@ -4591,20 +4644,85 @@ function renderCalendarView(){
   html += '<span class="sb-cal-nav-label">' + calendarLabel(date, view) + '</span>';
   html += '</div>';
 
-  html += '<div class="sb-cal-layout">';
-  html += renderUnscheduledPanel();
-  html += '<div class="sb-cal-grid-wrap">';
-  if(view === 'day'){
-    html += renderCalendarDayColumn(date, true);
+  if(view === 'month'){
+    html += renderCalendarMonthView(date);
+  } else if(view === 'year'){
+    html += renderCalendarYearView(date);
   } else {
-    var monday = getWeekStart(date);
-    html += '<div class="sb-cal-week-grid">';
-    for(var i=0; i<7; i++){ html += renderCalendarDayColumn(addDaysIso(monday, i), false); }
+    html += '<div class="sb-cal-layout">';
+    html += renderUnscheduledPanel();
+    html += '<div class="sb-cal-grid-wrap">';
+    if(view === 'day'){
+      html += renderCalendarDayColumn(date, true);
+    } else {
+      var monday = getWeekStart(date);
+      html += '<div class="sb-cal-week-grid">';
+      for(var i=0; i<7; i++){ html += renderCalendarDayColumn(addDaysIso(monday, i), false); }
+      html += '</div>';
+    }
+    html += '</div>';
     html += '</div>';
   }
-  html += '</div>';
-  html += '</div>';
 
+  return html;
+}
+
+function renderCalendarMonthView(date){
+  var d = isoToDate(date);
+  var year = d.getFullYear(), month = d.getMonth();
+  var firstOfMonth = new Date(year, month, 1);
+  var firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+  var startIso = todayISO(new Date(year, month, 1 - firstWeekday));
+  var todayStr = todayISO();
+
+  var html = '<div class="sb-cal-month-grid">';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d0){ html += '<div class="sb-cal-month-dow">' + d0 + '</div>'; });
+
+  var cellIso = startIso;
+  var totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+  for(var i=0; i<totalCells; i++){
+    var cd = isoToDate(cellIso);
+    var inMonth = cd.getMonth() === month;
+    var isToday = cellIso === todayStr;
+    var blocks = getBlocksForDate(cellIso);
+    html += '<div class="sb-cal-month-cell' + (inMonth?'':' outside') + (isToday?' today':'') + '" data-cal-month-day="' + cellIso + '">';
+    html += '<div class="mc-num">' + cd.getDate() + '</div>';
+    html += '<div class="mc-events">';
+    blocks.slice(0,3).forEach(function(b){
+      html += '<div class="mc-event" data-cal-month-event="' + b.id + '" data-cal-month-event-date="' + cellIso + '">' + escapeHtml(b.title) + '</div>';
+    });
+    if(blocks.length > 3) html += '<div class="mc-more">+' + (blocks.length-3) + ' more</div>';
+    html += '</div></div>';
+    cellIso = addDaysIso(cellIso, 1);
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderCalendarYearView(date){
+  var d = isoToDate(date);
+  var year = d.getFullYear();
+  var todayStr = todayISO();
+  var html = '<div class="sb-cal-year-grid">';
+  for(var m=0; m<12; m++){
+    var firstOfMonth = new Date(year, m, 1);
+    var firstWeekday = (firstOfMonth.getDay() + 6) % 7;
+    var daysInMonth = new Date(year, m+1, 0).getDate();
+    html += '<div class="sb-cal-year-month"><div class="sb-cal-year-month-title" data-cal-year-month="' + year + '-' + (m+1) + '">' + firstOfMonth.toLocaleDateString('en-US',{month:'long'}) + '</div>';
+    html += '<div class="sb-cal-year-dow">';
+    ['M','T','W','T','F','S','S'].forEach(function(c){ html += '<span>' + c + '</span>'; });
+    html += '</div><div class="sb-cal-year-days">';
+    for(var i=0; i<firstWeekday; i++){ html += '<span></span>'; }
+    for(var day=1; day<=daysInMonth; day++){
+      var iso = todayISO(new Date(year, m, day));
+      var hasEvents = getBlocksForDate(iso).length > 0;
+      var isToday = iso === todayStr;
+      html += '<span class="yd' + (isToday?' today':'') + (hasEvents?' has-events':'') + '" data-cal-year-day="' + iso + '">' + day + '</span>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
   return html;
 }
 
@@ -4663,21 +4781,31 @@ function renderCalendarDayColumn(date, wide){
   return html;
 }
 
-function openNewBlockModal(date, startMinutes){
+function openBlockModal(date, startMinutes, existingBlock){
+  var isEdit = !!existingBlock;
   var el = openModal(
-    '<h2>New block</h2>' +
-    '<div class="sb-field"><label>Title</label><input type="text" id="newBlockTitle" placeholder="What are you doing?"></div>' +
+    '<h2>' + (isEdit ? 'Edit block' : 'New block') + '</h2>' +
+    '<div class="sb-field"><label>Title</label><input type="text" id="newBlockTitle" placeholder="What are you doing?" value="' + (isEdit ? escapeHtml(existingBlock.title) : '') + '"></div>' +
     '<div class="sb-field"><label>Start time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + '</div></div>' +
     '<div class="sb-field"><label>Duration</label><select id="newBlockDuration" class="sb-select" style="width:100%;">' +
-      '<option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option>' +
-      '<option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option>' +
+      [15,30,45,60,90,120].map(function(v){
+        var label = v < 60 ? (v + ' minutes') : (v === 60 ? '1 hour' : (v/60) + ' hours');
+        var sel = (isEdit ? existingBlock.duration : 60) === v ? ' selected' : '';
+        return '<option value="' + v + '"' + sel + '>' + label + '</option>';
+      }).join('') +
     '</select></div>' +
     '<div class="sb-field"><label>Repeat</label><select id="newBlockRepeat" class="sb-select" style="width:100%;">' +
-      '<option value="">Does not repeat</option><option value="daily">Every day</option>' +
-      '<option value="weekdays">Every weekday (Mon–Fri)</option><option value="weekly">Every week</option>' +
-      '<option value="monthly">Every month</option>' +
+      ['', 'daily', 'weekdays', 'weekly', 'monthly'].map(function(v){
+        var labels = { '':'Does not repeat', daily:'Every day', weekdays:'Every weekday (Mon–Fri)', weekly:'Every week', monthly:'Every month' };
+        var sel = (isEdit ? (existingBlock.recurrence || '') : '') === v ? ' selected' : '';
+        return '<option value="' + v + '"' + sel + '>' + labels[v] + '</option>';
+      }).join('') +
     '</select></div>' +
-    '<div class="sb-modal-foot"><button class="sb-btn-text" id="newBlockCancel">Cancel</button><button class="sb-btn-cta" id="newBlockSave">Add block</button></div>'
+    '<div class="sb-modal-foot">' +
+      (isEdit ? '<button class="sb-btn-text" id="newBlockDelete" style="color:var(--danger);margin-right:auto;">Delete</button>' : '') +
+      '<button class="sb-btn-text" id="newBlockCancel">Cancel</button>' +
+      '<button class="sb-btn-cta" id="newBlockSave">' + (isEdit ? 'Save' : 'Add block') + '</button>' +
+    '</div>'
   );
   var titleInput = el.querySelector('#newBlockTitle');
   titleInput.focus();
@@ -4687,7 +4815,48 @@ function openNewBlockModal(date, startMinutes){
     if(!title) return;
     var duration = parseInt(el.querySelector('#newBlockDuration').value, 10);
     var recurrence = el.querySelector('#newBlockRepeat').value || null;
-    state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration, recurrence:recurrence }));
+    if(isEdit){
+      existingBlock.title = title;
+      existingBlock.duration = duration;
+      existingBlock.recurrence = recurrence;
+    } else {
+      state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration, recurrence:recurrence }));
+    }
+    saveState();
+    closeModal();
+    renderMain();
+  });
+  var deleteBtn = el.querySelector('#newBlockDelete');
+  if(deleteBtn) deleteBtn.addEventListener('click', function(){
+    closeModal();
+    if(existingBlock.recurrence){
+      openDeleteRecurringModal(existingBlock, date);
+    } else {
+      deleteCalendarBlock(existingBlock.id);
+      renderMain();
+    }
+  });
+}
+
+function openDeleteRecurringModal(block, occurrenceDate){
+  var el = openModal(
+    '<h2>Delete repeating event</h2>' +
+    '<p style="font-size:var(--fs-sm);color:var(--text-secondary);margin-bottom:14px;">"' + escapeHtml(block.title) + '" repeats. What would you like to delete?</p>' +
+    '<div class="sb-modal-foot" style="flex-wrap:wrap;">' +
+      '<button class="sb-btn-text" id="delCancel">Cancel</button>' +
+      '<button class="sb-btn-text" id="delThisOnly">Delete This Event Only</button>' +
+      '<button class="sb-btn-cta" id="delAll" style="background:var(--danger);">Delete All Events</button>' +
+    '</div>'
+  );
+  el.querySelector('#delCancel').addEventListener('click', closeModal);
+  el.querySelector('#delAll').addEventListener('click', function(){
+    deleteCalendarBlock(block.id);
+    closeModal();
+    renderMain();
+  });
+  el.querySelector('#delThisOnly').addEventListener('click', function(){
+    block.excludedDates = block.excludedDates || [];
+    block.excludedDates.push(occurrenceDate);
     saveState();
     closeModal();
     renderMain();
@@ -4705,8 +4874,8 @@ function wireCalendarViewEvents(){
     btn.addEventListener('click', function(){
       var action = btn.getAttribute('data-cal-nav');
       if(action === 'today') state.calendarDate = todayISO();
-      else if(action === 'prev') state.calendarDate = addDaysIso(state.calendarDate, state.calendarView==='day' ? -1 : -7);
-      else if(action === 'next') state.calendarDate = addDaysIso(state.calendarDate, state.calendarView==='day' ? 1 : 7);
+      else if(action === 'prev') state.calendarDate = addCalendarStep(state.calendarDate, state.calendarView, -1);
+      else if(action === 'next') state.calendarDate = addCalendarStep(state.calendarDate, state.calendarView, 1);
       renderMain();
     });
   });
@@ -4769,6 +4938,40 @@ function wireCalendarViewEvents(){
     });
   });
 
+  // --- Month view: click a day to open it, click an event to edit it ---
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-month-day]'), function(el){
+    el.addEventListener('click', function(e){
+      if(e.target.closest('[data-cal-month-event]')) return;
+      state.calendarDate = el.getAttribute('data-cal-month-day');
+      state.calendarView = 'day';
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-month-event]'), function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      var b = state.calendarBlocks.find(function(x){ return x.id === el.getAttribute('data-cal-month-event'); });
+      if(b) openBlockModal(el.getAttribute('data-cal-month-event-date'), b.startMinutes, b);
+    });
+  });
+
+  // --- Year view: click a day to open it, click a month name to open Month view ---
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-year-day]'), function(el){
+    el.addEventListener('click', function(){
+      state.calendarDate = el.getAttribute('data-cal-year-day');
+      state.calendarView = 'day';
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cal-year-month]'), function(el){
+    el.addEventListener('click', function(){
+      var parts = el.getAttribute('data-cal-year-month').split('-');
+      state.calendarDate = parts[0] + '-' + parts[1] + '-01';
+      state.calendarView = 'month';
+      renderMain();
+    });
+  });
+
   // --- Click/tap an empty slot to create a custom block ---
   Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(colBody){
     var date = colBody.getAttribute('data-cal-date-body');
@@ -4777,7 +4980,7 @@ function wireCalendarViewEvents(){
       var rect = colBody.getBoundingClientRect();
       var y = e.clientY - rect.top;
       var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
-      openNewBlockModal(date, minutes);
+      openBlockModal(date, minutes);
     });
   });
 
@@ -4789,13 +4992,12 @@ function wireCalendarViewEvents(){
     if(delBtn) delBtn.addEventListener('click', function(e){
       e.stopPropagation();
       var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+      var col0 = block.closest('[data-cal-date-body]');
+      var occDate = col0 ? col0.getAttribute('data-cal-date-body') : null;
       if(b && b.recurrence){
-        openConfirmModal('Delete this repeating event?', 'This removes every occurrence, not just this one.', function(){
-          deleteCalendarBlock(blockId);
-          renderMain();
-        });
-      } else {
-        deleteCalendarBlock(blockId);
+        openDeleteRecurringModal(b, occDate);
+      } else if(b){
+        deleteCalendarBlock(b.id);
         renderMain();
       }
     });
@@ -4815,7 +5017,12 @@ function wireCalendarViewEvents(){
       function onUp(){
         block.removeEventListener('pointermove', onMove);
         block.removeEventListener('pointerup', onUp);
-        if(!moved) return;
+        if(!moved){
+          var b0 = state.calendarBlocks.find(function(x){ return x.id === blockId; });
+          var col0 = block.closest('[data-cal-date-body]');
+          if(b0 && col0) openBlockModal(col0.getAttribute('data-cal-date-body'), b0.startMinutes, b0);
+          return;
+        }
         var newTop = parseFloat(block.style.top);
         var newStart = snapMinutes(CAL_HOUR_START*60 + (newTop / CAL_MIN_PX));
         var b = state.calendarBlocks.find(function(x){ return x.id === blockId; });
