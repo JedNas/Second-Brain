@@ -673,6 +673,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-block{
   position:absolute; left:4px; right:4px; background:var(--accent-soft); border:1px solid var(--accent);
   border-radius:8px; padding:4px 22px 4px 8px; overflow:hidden; cursor:grab; z-index:5; touch-action:none;
+  transition:top 70ms cubic-bezier(.2,.8,.4,1), height 70ms cubic-bezier(.2,.8,.4,1);
 }
 .sb-cal-block-title{ font-size:var(--fs-2xs); font-weight:700; color:var(--accent); line-height:1.2; }
 .sb-cal-block-time{ font-size:9px; color:var(--accent); opacity:0.8; }
@@ -5018,7 +5019,11 @@ function wireCalendarViewEvents(){
       function onMove(e2){
         var dy = e2.clientY - startY;
         if(Math.abs(dy) > 3) moved = true;
-        block.style.top = Math.max(0, startTop + dy) + 'px';
+        var rawTop = Math.max(0, startTop + dy);
+        var snappedTop = Math.round(rawTop / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4);
+        if(parseFloat(block.style.top) !== snappedTop){
+          block.style.top = snappedTop + 'px';
+        }
       }
       function onUp(){
         block.removeEventListener('pointermove', onMove);
@@ -5048,8 +5053,11 @@ function wireCalendarViewEvents(){
       var startHeight = parseFloat(block.style.height);
       function onMove(e2){
         var dy = e2.clientY - startY;
-        var newHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
-        block.style.height = newHeight + 'px';
+        var rawHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
+        var snappedHeight = Math.max(CAL_HOUR_HEIGHT/4, Math.round(rawHeight / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4));
+        if(parseFloat(block.style.height) !== snappedHeight){
+          block.style.height = snappedHeight + 'px';
+        }
       }
       function onUp(){
         handle.removeEventListener('pointermove', onMove);
