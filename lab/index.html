@@ -695,6 +695,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .mc-num{ font-size:var(--fs-sm); font-weight:700; width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-bottom:4px; }
 .mc-events{ display:flex; flex-direction:column; gap:2px; }
 .mc-event{ font-size:10px; background:var(--accent-soft); color:var(--accent); border-radius:5px; padding:2px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mc-event-time{ font-weight:700; }
 .mc-event:hover{ background:var(--accent); color:#fff; }
 .mc-more{ font-size:9px; color:var(--text-tertiary); padding:2px 5px; }
 
@@ -4690,7 +4691,7 @@ function renderCalendarMonthView(date){
     html += '<div class="mc-num">' + cd.getDate() + '</div>';
     html += '<div class="mc-events">';
     blocks.slice(0,3).forEach(function(b){
-      html += '<div class="mc-event" data-cal-month-event="' + b.id + '" data-cal-month-event-date="' + cellIso + '">' + escapeHtml(b.title) + '</div>';
+      html += '<div class="mc-event" data-cal-month-event="' + b.id + '" data-cal-month-event-date="' + cellIso + '"><span class="mc-event-time">' + minutesToLabel(b.startMinutes) + '</span> ' + escapeHtml(b.title) + '</div>';
     });
     if(blocks.length > 3) html += '<div class="mc-more">+' + (blocks.length-3) + ' more</div>';
     html += '</div></div>';
@@ -4772,7 +4773,7 @@ function renderCalendarDayColumn(date, wide){
     html += '<div class="sb-cal-block" data-cal-block-id="' + b.id + '" style="top:' + top + 'px;height:' + height + 'px;">';
     html += '<button class="sb-cal-block-delete" data-cal-block-delete="' + b.id + '">✕</button>';
     html += '<div class="sb-cal-block-title">' + escapeHtml(b.title) + '</div>';
-    html += '<div class="sb-cal-block-time">' + minutesToLabel(b.startMinutes) + (b.recurrence ? ' ' + folderIconSvg('🔁', 9) : '') + '</div>';
+    html += '<div class="sb-cal-block-time">' + minutesToLabel(b.startMinutes) + ' – ' + minutesToLabel(b.startMinutes + b.duration) + (b.recurrence ? ' ' + folderIconSvg('🔁', 9) : '') + '</div>';
     html += '<div class="sb-cal-resize-handle" data-cal-resize="' + b.id + '"></div>';
     html += '</div>';
   });
@@ -4786,7 +4787,7 @@ function openBlockModal(date, startMinutes, existingBlock){
   var el = openModal(
     '<h2>' + (isEdit ? 'Edit block' : 'New block') + '</h2>' +
     '<div class="sb-field"><label>Title</label><input type="text" id="newBlockTitle" placeholder="What are you doing?" value="' + (isEdit ? escapeHtml(existingBlock.title) : '') + '"></div>' +
-    '<div class="sb-field"><label>Start time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + '</div></div>' +
+    '<div class="sb-field"><label>Time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + ' – <span id="newBlockEndTime">' + minutesToLabel(startMinutes + (isEdit ? existingBlock.duration : 60)) + '</span></div></div>' +
     '<div class="sb-field"><label>Duration</label><select id="newBlockDuration" class="sb-select" style="width:100%;">' +
       [15,30,45,60,90,120].map(function(v){
         var label = v < 60 ? (v + ' minutes') : (v === 60 ? '1 hour' : (v/60) + ' hours');
@@ -4809,6 +4810,11 @@ function openBlockModal(date, startMinutes, existingBlock){
   );
   var titleInput = el.querySelector('#newBlockTitle');
   titleInput.focus();
+  var durationSelect = el.querySelector('#newBlockDuration');
+  var endTimeSpan = el.querySelector('#newBlockEndTime');
+  durationSelect.addEventListener('change', function(){
+    endTimeSpan.textContent = minutesToLabel(startMinutes + parseInt(durationSelect.value, 10));
+  });
   el.querySelector('#newBlockCancel').addEventListener('click', closeModal);
   el.querySelector('#newBlockSave').addEventListener('click', function(){
     var title = titleInput.value.trim();
