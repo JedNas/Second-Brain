@@ -5020,16 +5020,32 @@ function wireCalendarViewEvents(){
       var liveBlockRef = state.calendarBlocks.find(function(x){ return x.id === blockId; });
       var blockDuration = liveBlockRef.duration;
       var recurIconHtml = liveBlockRef.recurrence ? ' ' + folderIconSvg('🔁', 9) : '';
+      var lastMoveTime = performance.now();
+      var lastMoveY = startY;
+      var SPEED_THRESHOLD = 0.6; // px/ms — above this, movement is "fast" and skips snapping
+      function updateTimeLabel(topPx){
+        if(!timeEl) return;
+        var newStartMin = CAL_HOUR_START*60 + Math.round(topPx / CAL_MIN_PX);
+        timeEl.innerHTML = minutesToLabel(newStartMin) + ' – ' + minutesToLabel(newStartMin + blockDuration) + recurIconHtml;
+      }
       function onMove(e2){
         var dy = e2.clientY - startY;
         if(Math.abs(dy) > 3) moved = true;
+        var now = performance.now();
+        var dt = Math.max(1, now - lastMoveTime);
+        var speed = Math.abs(e2.clientY - lastMoveY) / dt;
+        lastMoveTime = now;
+        lastMoveY = e2.clientY;
+
         var rawTop = Math.max(0, startTop + dy);
-        var snappedTop = Math.round(rawTop / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4);
-        if(parseFloat(block.style.top) !== snappedTop){
-          block.style.top = snappedTop + 'px';
-          if(timeEl){
-            var newStartMin = CAL_HOUR_START*60 + Math.round(snappedTop / CAL_MIN_PX);
-            timeEl.innerHTML = minutesToLabel(newStartMin) + ' – ' + minutesToLabel(newStartMin + blockDuration) + recurIconHtml;
+        if(speed > SPEED_THRESHOLD){
+          block.style.top = rawTop + 'px';
+          updateTimeLabel(rawTop);
+        } else {
+          var snappedTop = Math.round(rawTop / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4);
+          if(parseFloat(block.style.top) !== snappedTop){
+            block.style.top = snappedTop + 'px';
+            updateTimeLabel(snappedTop);
           }
         }
       }
@@ -5063,15 +5079,30 @@ function wireCalendarViewEvents(){
       var liveBlockRefR = state.calendarBlocks.find(function(x){ return x.id === blockId; });
       var blockStartMin = liveBlockRefR.startMinutes;
       var recurIconHtmlR = liveBlockRefR.recurrence ? ' ' + folderIconSvg('🔁', 9) : '';
+      var lastMoveTimeR = performance.now();
+      var lastMoveYR = startY;
+      function updateEndLabel(heightPx){
+        if(!timeElR) return;
+        var newDur = Math.max(15, Math.round(heightPx / CAL_MIN_PX));
+        timeElR.innerHTML = minutesToLabel(blockStartMin) + ' – ' + minutesToLabel(blockStartMin + newDur) + recurIconHtmlR;
+      }
       function onMove(e2){
         var dy = e2.clientY - startY;
+        var now = performance.now();
+        var dt = Math.max(1, now - lastMoveTimeR);
+        var speed = Math.abs(e2.clientY - lastMoveYR) / dt;
+        lastMoveTimeR = now;
+        lastMoveYR = e2.clientY;
+
         var rawHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
-        var snappedHeight = Math.max(CAL_HOUR_HEIGHT/4, Math.round(rawHeight / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4));
-        if(parseFloat(block.style.height) !== snappedHeight){
-          block.style.height = snappedHeight + 'px';
-          if(timeElR){
-            var newDur = Math.max(15, Math.round(snappedHeight / CAL_MIN_PX));
-            timeElR.innerHTML = minutesToLabel(blockStartMin) + ' – ' + minutesToLabel(blockStartMin + newDur) + recurIconHtmlR;
+        if(speed > 0.6){
+          block.style.height = rawHeight + 'px';
+          updateEndLabel(rawHeight);
+        } else {
+          var snappedHeight = Math.max(CAL_HOUR_HEIGHT/4, Math.round(rawHeight / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4));
+          if(parseFloat(block.style.height) !== snappedHeight){
+            block.style.height = snappedHeight + 'px';
+            updateEndLabel(snappedHeight);
           }
         }
       }
