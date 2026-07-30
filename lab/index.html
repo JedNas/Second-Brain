@@ -933,8 +933,8 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
   .sb-header-search{ flex:1; min-width:0; margin-left:0 !important; }
   .sb-profile-text, .sb-profile-chevron{ display:none; }
   .sb-profile-chip{ padding:5px; }
-  .sb-main{ height:auto; overflow-y:visible; }
-  .sb-main-inner{ padding:20px 16px calc(150px + env(safe-area-inset-bottom)); overflow-y:visible; }
+  .sb-main{ height:auto; overflow-y:visible; min-width:0; }
+  .sb-main-inner{ padding:20px 16px calc(150px + env(safe-area-inset-bottom)); overflow-y:visible; min-width:0; width:100%; box-sizing:border-box; }
   .sb-capture-dock{
     position:fixed; left:0; right:0; bottom:calc(71px + env(safe-area-inset-bottom));
     padding:10px 16px; z-index:55; box-shadow:0 -4px 12px rgba(0,0,0,0.06);
