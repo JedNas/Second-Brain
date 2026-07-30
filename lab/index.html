@@ -371,6 +371,7 @@ a{ color:var(--accent); }
   background:var(--bg-elevated); border:1px solid var(--separator); border-radius:var(--radius-lg);
   padding:16px; box-shadow:var(--shadow-sm); margin-bottom:16px;
 }
+.sb-modal .sb-review{ background:none; border:none; box-shadow:none; padding:0; margin-bottom:0; max-height:70vh; overflow-y:auto; }
 .sb-review-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .sb-review-head h3{ font-size:var(--fs-md); }
 .sb-review-row{
@@ -535,13 +536,8 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 }
 .sb-today-combined{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .sb-today-col h4{ font-size:var(--fs-xs); color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:8px; }
-.sb-today-block-row{
-  display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
-  background:var(--overlay-1); margin-bottom:6px; cursor:pointer; font-size:var(--fs-sm);
-}
-.sb-today-block-row:hover{ background:var(--accent-soft); }
-.sb-today-block-row .tb-time{ font-weight:700; color:var(--accent); flex-shrink:0; font-size:var(--fs-xs); }
-.sb-today-block-row .tb-title{ color:var(--text); }
+.sb-today-block-row{ cursor:pointer; margin-bottom:8px; }
+.sb-today-block-row:hover{ box-shadow:var(--shadow-md); border-color:var(--accent); }
 
 .sb-board-count{ background:var(--accent); color:#fff; }
 .sb-board-add-row{ display:flex; gap:8px; }
@@ -3392,10 +3388,6 @@ function renderMain(){
     wireCaptureEvents();
   }
 
-  if(state.pendingReview.length){
-    html += renderReviewPanel();
-  }
-
   html += renderBreadcrumb();
 
   switch(state.view){
@@ -3732,6 +3724,7 @@ function handleFileClick(){
     });
     resetCaptureDraft();
     renderMain();
+    openReviewModal();
   }).catch(function(err){
     console.error(err);
     if(btn){ btn.disabled = false; btn.textContent = 'File'; }
@@ -3745,6 +3738,12 @@ function resetCaptureDraft(){
   state.pendingVideos = [];
   state.pendingLinkPreview = null;
   state.pendingVoiceNote = null;
+}
+
+function openReviewModal(){
+  if(!state.pendingReview.length) return;
+  openModal(renderReviewPanel(), true);
+  wireReviewEvents();
 }
 
 function renderReviewPanel(){
@@ -3848,6 +3847,7 @@ function wireReviewEvents(){
   var cancelBtn = document.getElementById('btnReviewCancel');
   if(cancelBtn) cancelBtn.addEventListener('click', function(){
     state.pendingReview = [];
+    closeModal();
     renderMain();
   });
   var fileAllBtn = document.getElementById('btnReviewFileAll');
@@ -3902,6 +3902,7 @@ function fileAllReviewItems(){
   state.pendingReview = [];
   invalidateNotesCache();
   saveState();
+  closeModal();
   renderAll();
   showToast(entries.length + (entries.length === 1 ? ' note filed.' : ' notes filed.'), 'Undo', undoLastFile);
 }
@@ -4204,6 +4205,7 @@ function noteMenuItems(note, folder){
     items.push({ label:'Due & priority', action:'dueedit' });
   }
   items.push({ label: note.linkPreview ? 'Edit link' : 'Add link…', action:'link' });
+  items.push({ label:'Add photo/video…', action:'media' });
   items.push({ label:'Move to…', action:'move' });
   items.push({ label:'Delete', action:'delete', danger:true });
   return items;
@@ -4460,6 +4462,7 @@ function sortDailyBoard(){
     state.dailyBoard = [];
     saveState();
     renderMain();
+    openReviewModal();
   }).catch(function(err){
     console.error(err);
     if(sortBtn){ sortBtn.disabled = false; sortBtn.textContent = 'Sort it all (' + items.length + ')'; }
@@ -4512,14 +4515,19 @@ function renderTodayOverview(){
   html += '<div class="sb-today-combined">';
 
   if(blocks.length){
-    html += '<div class="sb-today-col"><h4>On your calendar</h4>';
+    html += '<div class="sb-today-col"><h4>On your calendar</h4><div class="sb-note-list">';
     blocks.forEach(function(b){
-      html += '<div class="sb-today-block-row" data-today-block="1">';
-      html += '<span class="tb-time">' + minutesToLabel(b.startMinutes) + '</span>';
-      html += '<span class="tb-title">' + escapeHtml(b.title) + '</span>';
-      html += '</div>';
+      html += '<div class="sb-note sb-today-block-row" data-today-block="1">';
+      html += '<div class="sb-note-top">';
+      html += '<span class="sb-note-check" style="border:none;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;">' + folderIconSvg('📅', 12) + '</span>';
+      html += '<div class="sb-note-body">';
+      html += '<div class="sb-note-content">' + escapeHtml(b.title) + '</div>';
+      html += '<div class="sb-note-meta">';
+      html += '<span class="sb-note-time">' + minutesToLabel(b.startMinutes) + ' – ' + minutesToLabel(b.startMinutes + b.duration) + '</span>';
+      if(b.recurrence) html += '<span class="sb-badge-due">' + folderIconSvg('🔁', 11) + ' repeats</span>';
+      html += '</div></div></div></div>';
     });
-    html += '</div>';
+    html += '</div></div>';
   }
 
   if(tasks.length){
@@ -5518,7 +5526,6 @@ function renderDigestView(){
    MAIN EVENT WIRING (dispatch)
    ============================================================ */
 function wireMainEvents(){
-  wireReviewEvents();
   wireBreadcrumbEvents();
   wireNoteCardEvents();
   wireCommonPageEvents();
@@ -5893,6 +5900,46 @@ function openNoteMenuAtPoint(x, y, noteId, folderId){
 }
 function closeNoteMenu(){ closeFloatingMenu('floatingNoteMenu'); }
 
+function addMediaToExistingNote(note){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,video/*';
+  input.multiple = true;
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function(){
+    var files = Array.prototype.slice.call(input.files);
+    if(!files.length){ input.remove(); return; }
+    var remaining = files.length;
+    files.forEach(function(file){
+      var isVideo = file.type.indexOf('video') === 0;
+      if(isVideo && file.size > 8*1024*1024){
+        showToast('Heads up: "' + file.name + '" is large (' + Math.round(file.size/1024/1024) + 'MB) — big videos can fill up local storage.');
+      }
+      var reader = new FileReader();
+      reader.onload = function(){
+        if(isVideo){
+          note.videos = note.videos || [];
+          note.videos.push(reader.result);
+        } else {
+          note.images = note.images || [];
+          note.images.push(reader.result);
+        }
+        remaining--;
+        if(remaining === 0){
+          invalidateNotesCache();
+          saveState();
+          renderAll();
+          showToast('Added to note.');
+          input.remove();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+  input.click();
+}
+
 function handleNoteMenuAction(action, note, folder){
   if(action === 'pin'){
     note.pinned = !note.pinned; saveState(); renderAll(); return;
@@ -5904,6 +5951,7 @@ function handleNoteMenuAction(action, note, folder){
   if(action === 'repeat'){ openRepeatModal(note); return; }
   if(action === 'dueedit'){ openDueEditModal(note); return; }
   if(action === 'link'){ openLinkEditModal(note, folder); return; }
+  if(action === 'media'){ addMediaToExistingNote(note); return; }
   if(action === 'move'){ openNoteMoveModal(note, folder); return; }
   if(action === 'delete'){
     openConfirmModal('Delete this note?', 'It will move to Trash.', function(){
@@ -6807,6 +6855,10 @@ function init(){
     seedSampleDataIfEmpty();
     seedSubfoldersIfMissing();
     renderAll();
+
+    if(state.pendingReview.length){
+      openReviewModal();
+    }
 
     if(getAllNotesCached().length > 20 && !state.settings.lastExportAt){
       setTimeout(function(){
