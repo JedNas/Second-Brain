@@ -3196,7 +3196,7 @@ function renderBottomNav(){
     if(isAdd) return '<button class="bn-add" data-nav="' + view + '"><span>+</span></button>';
     return '<button class="' + active.trim() + '" data-nav="' + view + '"><span class="bn-ico">' + folderIconSvg(ico, 17) + '</span>' + label + '</button>';
   }
-  el.innerHTML = b('home','🏠','Home') + b('home','+','Add', true) + b('tasks','✅','Tasks') + b('calendar','📅','Calendar');
+  el.innerHTML = b('home','🏠','Home') + b('tasks','✅','Tasks') + b('calendar','📅','Calendar');
   Array.prototype.forEach.call(el.querySelectorAll('button'), function(btn){
     btn.addEventListener('click', function(){
       var v = btn.getAttribute('data-nav');
