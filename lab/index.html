@@ -3315,31 +3315,95 @@ function closeMobileDrawer(){
 }
 
 (function(){
-  var startX = null, startY = null, tracking = false;
+  var startX = null, startY = null, currentX = 0, mode = null, dragging = false;
+
+  function drawerWidth(){
+    var panel = document.querySelector('.sb-mobile-drawer-panel');
+    return panel ? panel.getBoundingClientRect().width : Math.min(window.innerWidth * 0.84, 320);
+  }
+  function getPanelAndBackdrop(){
+    return {
+      panel: document.querySelector('.sb-mobile-drawer-panel'),
+      backdrop: document.querySelector('.sb-mobile-drawer.open')
+    };
+  }
+
   document.addEventListener('touchstart', function(e){
     if(window.innerWidth > 720 || e.touches.length !== 1) return;
     var t = e.touches[0];
     startX = t.clientX;
     startY = t.clientY;
-    tracking = (!mobileDrawerOpen && t.clientX < 28) || mobileDrawerOpen;
+    currentX = startX;
+    dragging = false;
+    if(!mobileDrawerOpen && t.clientX < 28) mode = 'opening';
+    else if(mobileDrawerOpen) mode = 'closing';
+    else mode = null;
   }, { passive:true });
+
   document.addEventListener('touchmove', function(e){
-    if(!tracking || startX === null || e.touches.length !== 1) return;
+    if(!mode || e.touches.length !== 1) return;
     var t = e.touches[0];
     var dx = t.clientX - startX;
     var dy = t.clientY - startY;
-    if(Math.abs(dy) > Math.abs(dx)) return;
-    if(!mobileDrawerOpen && dx > 60){
-      openMobileDrawer();
-      tracking = false;
-    } else if(mobileDrawerOpen && dx < -60){
-      closeMobileDrawer();
-      tracking = false;
+
+    if(!dragging){
+      if(Math.abs(dy) > Math.abs(dx) + 4){ mode = null; return; }
+      if(Math.abs(dx) < 8) return;
+      dragging = true;
+      if(mode === 'opening') openMobileDrawer();
+      var els = getPanelAndBackdrop();
+      if(els.panel){ els.panel.style.animation = 'none'; els.panel.style.transition = 'none'; }
+      if(els.backdrop){ els.backdrop.style.animation = 'none'; els.backdrop.style.transition = 'none'; }
+    }
+
+    currentX = t.clientX;
+    var w = drawerWidth();
+    var els = getPanelAndBackdrop();
+    if(!els.panel || !els.backdrop) return;
+
+    if(mode === 'opening'){
+      var progress = Math.max(0, Math.min(1, dx / w));
+      els.panel.style.transform = 'translateX(' + ((progress - 1) * 100) + '%)';
+      els.backdrop.style.background = 'rgba(26,23,20,' + (0.4 * progress).toFixed(2) + ')';
+    } else if(mode === 'closing'){
+      var progress = Math.max(0, Math.min(1, -dx / w));
+      els.panel.style.transform = 'translateX(' + (-progress * 100) + '%)';
+      els.backdrop.style.background = 'rgba(26,23,20,' + (0.4 * (1 - progress)).toFixed(2) + ')';
     }
   }, { passive:true });
+
   document.addEventListener('touchend', function(){
-    tracking = false;
-    startX = null;
+    if(!mode || !dragging){ mode = null; dragging = false; startX = null; return; }
+    var w = drawerWidth();
+    var dx = currentX - startX;
+    var els = getPanelAndBackdrop();
+
+    if(els.panel) els.panel.style.transition = 'transform 0.2s cubic-bezier(.2,.8,.4,1)';
+    if(els.backdrop) els.backdrop.style.transition = 'background 0.2s ease';
+
+    if(mode === 'opening'){
+      var progress = dx / w;
+      if(progress > 0.3){
+        if(els.panel) els.panel.style.transform = 'translateX(0)';
+        if(els.backdrop) els.backdrop.style.background = 'rgba(26,23,20,0.4)';
+        mobileDrawerOpen = true;
+      } else {
+        if(els.panel) els.panel.style.transform = 'translateX(-100%)';
+        if(els.backdrop) els.backdrop.style.background = 'rgba(26,23,20,0)';
+        setTimeout(closeMobileDrawer, 200);
+      }
+    } else if(mode === 'closing'){
+      var progress = -dx / w;
+      if(progress > 0.3){
+        if(els.panel) els.panel.style.transform = 'translateX(-100%)';
+        if(els.backdrop) els.backdrop.style.background = 'rgba(26,23,20,0)';
+        setTimeout(closeMobileDrawer, 200);
+      } else {
+        if(els.panel) els.panel.style.transform = 'translateX(0)';
+        if(els.backdrop) els.backdrop.style.background = 'rgba(26,23,20,0.4)';
+      }
+    }
+    mode = null; dragging = false; startX = null;
   }, { passive:true });
 })();
 
