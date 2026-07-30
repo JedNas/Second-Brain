@@ -6868,15 +6868,6 @@ function init(){
   });
 }
 
-window.__debugSeedReview = function(){
-  var folder = state.folders[0];
-  var note = createNote('Teach players one step to the ball at 45 degrees', { description:'This is a basketball coaching drill.' });
-  state.pendingReview.push({
-    note: note, reasoning:'Test', suggestedName:'', suggestedDesc:'', suggestedDueDate:'',
-    suggestedPriority:'medium', existingFolderId: folder.id, isNewSuggestion:false, duplicate:null
-  });
-  openReviewModal();
-};
 init();
 
 })();
