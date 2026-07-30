@@ -6879,6 +6879,15 @@ function init(){
   });
 }
 
+window.__debugSeedReview = function(){
+  var folder = state.folders[0];
+  var note = createNote('Original title text', { description:'Original description.' });
+  state.pendingReview.push({
+    note: note, reasoning:'Test', suggestedName:'', suggestedDesc:'', suggestedDueDate:'',
+    suggestedPriority:'medium', existingFolderId: folder.id, isNewSuggestion:false, duplicate:null
+  });
+  openReviewModal();
+};
 init();
 
 })();
