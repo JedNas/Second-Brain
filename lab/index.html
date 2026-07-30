@@ -378,7 +378,12 @@ a{ color:var(--accent); }
   border-top:1px solid var(--separator); padding:12px 0; display:flex; flex-direction:column; gap:8px;
 }
 .sb-review-row:first-of-type{ border-top:none; }
-.sb-review-text{ font-weight:600; font-size:var(--fs-md); }
+.sb-review-text{
+  font-weight:600; font-size:var(--fs-md); border:1px solid transparent; background:transparent;
+  width:100%; padding:4px 6px; border-radius:6px; color:var(--text); transition:border-color 150ms ease, background 150ms ease;
+}
+.sb-review-text:hover{ background:var(--overlay-1); }
+.sb-review-text:focus{ border-color:var(--accent); background:var(--bg); outline:none; }
 .sb-review-reason{ color:var(--text-secondary); font-size:var(--fs-xs); }
 .sb-review-dupe{
   background:var(--warning-soft); color:#8a5a12; border-radius:var(--radius-sm);
@@ -2720,7 +2725,7 @@ function classify(content, images, audio){
 '- First check whether the entry actually contains MULTIPLE separate thoughts or items — e.g. a shopping list ("milk, eggs, bread"), several unrelated ideas typed or spoken in one go, or a numbered/bulleted list. If so, split it into one array entry PER item, each filed independently. If it\'s genuinely one single thought, return an array with exactly one entry.\n' +
 '- Never split a single idea that just happens to be a full sentence — only split when there are clearly distinct, separable items.\n' +
 '- For each entry: "text" is that one item rewritten as a short, clean, natural standalone note — strip filler verbs and instructions down to the actual thing. "buy laptop" becomes "Laptop", "remind me to call mom" becomes "Call mom", "need to fix the bike" becomes "Fix the bike", "we need milk and eggs" becomes two entries "Milk" and "Eggs". Keep it minimal and natural, the way a person would jot it on a list, not a transcript of what they said.\n' +
-'- "description": if the person included extra detail beyond the core item — a price, a brand, a size, a parenthetical note, a reason, a specific quantity, or any other clarifying context — pull that OUT of "text" and put it here instead, rewritten as a short natural phrase. Example: "Buy running shoes (500 PLN)" -> text: "Running shoes", description: "500 PLN". Example: "call the dentist, ask about the invoice from March" -> text: "Call the dentist", description: "Ask about the invoice from March". If there is no extra detail beyond the core item, return "description" as an empty string. Never duplicate in description something that is already fully captured by dueDate or priority alone.\n' +
+'- "description": this is where the REST of what the person actually wrote or said belongs — not a short summary of it. Take their full input, remove only the short core item that became "text", and keep everything else as close to their own original wording and phrasing as reads naturally (translated into English if needed, but not compressed, paraphrased away, or trimmed down). Context, reasons, extra clauses, specific details, feelings — all of it stays, close to verbatim. Example: "Buy running shoes, the Nike ones from the sale, need them before Saturday\'s game because my old ones tore" -> text: "Running shoes", description: "The Nike ones from the sale, need them before Saturday\'s game because my old ones tore". Only leave "description" empty if there truly is nothing beyond the core item itself. When in doubt, keep MORE of what they wrote rather than less — never silently drop content just because it seems minor. Never duplicate in description something that is already fully captured by dueDate or priority alone.\n' +
 '- IMPORTANT: always write "text", "description", "reasoning", and "newFolderDescription" in English, no matter what language the person wrote or spoke in. If they wrote or said it in Polish (or any other language), translate the meaning into natural English — never leave the original-language text in the output.\n' +
 '- If an existing folder (top-level or nested) clearly fits an entry, use its exact name and set isNew to false.\n' +
 '- If nothing fits well for an entry, propose ONE new top-level folder with a short, plain English name and a one-sentence English description of what belongs there, and set isNew to true. Two entries needing the same new folder should use the identical folder name.\n' +
@@ -3764,7 +3769,7 @@ function renderReviewPanel(){
     var showTaskFields = item.isNewSuggestion ? isTaskFolderName(item.suggestedName) : folderIsTaskList(selectedFolder);
 
     html += '<div class="sb-review-row" data-review-index="' + i + '">';
-    html += '<div class="sb-review-text">' + escapeHtml(item.note.content) + '</div>';
+    html += '<input type="text" class="sb-review-text" data-review-text="' + i + '" value="' + escapeHtml(item.note.content) + '">';
     if(item.reasoning) html += '<div class="sb-review-reason">' + escapeHtml(item.reasoning) + '</div>';
     if(item.duplicate){
       html += '<div class="sb-review-dupe" data-goto-dupe="' + item.duplicate.note.id + '" data-dupe-folder="' + item.duplicate.folder.id + '">' + folderIconSvg('⚠', 13) + ' Might be similar to "' + escapeHtml(item.duplicate.note.content.slice(0,60)) + '" in ' + escapeHtml(item.duplicate.folder.name) + ' — click to view</div>';
@@ -3793,6 +3798,12 @@ function renderReviewPanel(){
 }
 
 function wireReviewEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-review-text]'), function(input){
+    input.addEventListener('input', function(){
+      var i = Number(input.getAttribute('data-review-text'));
+      state.pendingReview[i].note.content = input.value;
+    });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-review-desc]'), function(ta){
     autoResize(ta);
     ta.addEventListener('input', function(){
