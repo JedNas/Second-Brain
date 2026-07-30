@@ -971,7 +971,9 @@ html[data-theme="dark"] .sb-bulkbar{ background:var(--bg-elevated); color:var(--
   .sb-mobile-drawer-panel{
     position:absolute; top:0; left:0; bottom:0; width:84%; max-width:320px; background:var(--bg-sidebar);
     padding:18px 14px; overflow-y:auto; box-shadow:var(--shadow-lg);
+    animation:sbDrawerSlideIn 0.2s cubic-bezier(.2,.8,.4,1);
   }
+  @keyframes sbDrawerSlideIn{ from{ transform:translateX(-100%); } to{ transform:translateX(0); } }
   .sb-mobile-drawer-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .sb-mobile-drawer-head h3{ font-size:var(--fs-md); }
 }
@@ -3309,6 +3311,35 @@ function closeMobileDrawer(){
   var root = document.getElementById('mobileDrawerRoot');
   if(root) root.innerHTML = '';
 }
+
+(function(){
+  var startX = null, startY = null, tracking = false;
+  document.addEventListener('touchstart', function(e){
+    if(window.innerWidth > 720 || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    tracking = (!mobileDrawerOpen && t.clientX < 28) || mobileDrawerOpen;
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if(!tracking || startX === null || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    if(Math.abs(dy) > Math.abs(dx)) return;
+    if(!mobileDrawerOpen && dx > 60){
+      openMobileDrawer();
+      tracking = false;
+    } else if(mobileDrawerOpen && dx < -60){
+      closeMobileDrawer();
+      tracking = false;
+    }
+  }, { passive:true });
+  document.addEventListener('touchend', function(){
+    tracking = false;
+    startX = null;
+  }, { passive:true });
+})();
 
 function renderMobileDrawer(){
   var root = document.getElementById('mobileDrawerRoot');
