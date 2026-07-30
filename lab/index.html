@@ -675,6 +675,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   border-radius:8px; padding:4px 22px 4px 8px; overflow:hidden; cursor:grab; z-index:5; touch-action:none;
   transition:top 70ms cubic-bezier(.2,.8,.4,1), height 70ms cubic-bezier(.2,.8,.4,1);
 }
+.sb-cal-block.sb-no-snap-transition{ transition:none; }
 .sb-cal-block-title{ font-size:var(--fs-2xs); font-weight:700; color:var(--accent); line-height:1.2; }
 .sb-cal-block-time{ font-size:9px; color:var(--accent); opacity:0.8; }
 .sb-cal-block-delete{
@@ -5039,9 +5040,11 @@ function wireCalendarViewEvents(){
 
         var rawTop = Math.max(0, startTop + dy);
         if(speed > SPEED_THRESHOLD){
+          block.classList.add('sb-no-snap-transition');
           block.style.top = rawTop + 'px';
           updateTimeLabel(rawTop);
         } else {
+          block.classList.remove('sb-no-snap-transition');
           var snappedTop = Math.round(rawTop / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4);
           if(parseFloat(block.style.top) !== snappedTop){
             block.style.top = snappedTop + 'px';
@@ -5096,9 +5099,11 @@ function wireCalendarViewEvents(){
 
         var rawHeight = Math.max(CAL_HOUR_HEIGHT/4, startHeight + dy);
         if(speed > 0.6){
+          block.classList.add('sb-no-snap-transition');
           block.style.height = rawHeight + 'px';
           updateEndLabel(rawHeight);
         } else {
+          block.classList.remove('sb-no-snap-transition');
           var snappedHeight = Math.max(CAL_HOUR_HEIGHT/4, Math.round(rawHeight / (CAL_HOUR_HEIGHT/4)) * (CAL_HOUR_HEIGHT/4));
           if(parseFloat(block.style.height) !== snappedHeight){
             block.style.height = snappedHeight + 'px';
