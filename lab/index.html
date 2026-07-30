@@ -3157,7 +3157,7 @@ function renderBottomNav(){
     if(isAdd) return '<button class="bn-add" data-nav="' + view + '"><span>+</span></button>';
     return '<button class="' + active.trim() + '" data-nav="' + view + '"><span class="bn-ico">' + folderIconSvg(ico, 17) + '</span>' + label + '</button>';
   }
-  el.innerHTML = b('home','🏠','Home') + b('home','+','Add', true) + b('tasks','✅','Tasks') + b('digest','✨','Review');
+  el.innerHTML = b('home','🏠','Home') + b('home','+','Add', true) + b('tasks','✅','Tasks') + b('calendar','📅','Calendar');
   Array.prototype.forEach.call(el.querySelectorAll('button'), function(btn){
     btn.addEventListener('click', function(){
       var v = btn.getAttribute('data-nav');
@@ -3271,13 +3271,30 @@ function renderMobileDrawer(){
   var root = document.getElementById('mobileDrawerRoot');
   if(!root) return;
   if(!mobileDrawerOpen){ root.innerHTML = ''; return; }
+  var overdue = computeTaskBuckets().overdue.length;
   var html = '<div class="sb-mobile-drawer open" id="mobileDrawerBackdrop">';
   html += '<div class="sb-mobile-drawer-panel">';
-  html += '<div class="sb-mobile-drawer-head"><h3>Folders</h3><button class="sb-icon-btn" id="btnCloseDrawer">✕</button></div>';
+  html += '<div class="sb-mobile-drawer-head"><h3>Second Brain</h3><button class="sb-icon-btn" id="btnCloseDrawer">✕</button></div>';
+  html += '<div class="sb-nav sb-mobile-drawer-nav">';
+  html += navItem('home','🏠','Home');
+  html += navItem('tasks','✅','Tasks', overdue > 0 ? overdue : null);
+  html += navItem('calendar','📅','Calendar');
+  html += navItem('brain','🧠','Brain');
+  html += navItem('trash','🗑','Trash');
+  html += navItem('ideas','💡','Ideas');
+  html += '</div>';
+  html += '<div class="sb-sep"></div>';
   html += '<div class="sb-folder-tree" id="mobileFolderTree">' + renderFolderNodes(state.folders, 0) + '</div>';
   html += '<button class="sb-new-folder-btn" id="btnNewFolderDrawer" style="margin-top:10px;">+ New Folder</button>';
   html += '</div></div>';
   root.innerHTML = html;
+
+  Array.prototype.forEach.call(root.querySelectorAll('.sb-mobile-drawer-nav [data-nav]'), function(btn){
+    btn.addEventListener('click', function(){
+      navigateTo(btn.getAttribute('data-nav'));
+      closeMobileDrawer();
+    });
+  });
 
   document.getElementById('mobileDrawerBackdrop').addEventListener('mousedown', function(e){
     if(e.target.id === 'mobileDrawerBackdrop') closeMobileDrawer();
