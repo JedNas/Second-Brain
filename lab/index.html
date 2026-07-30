@@ -341,6 +341,12 @@ a{ color:var(--accent); }
 .sb-thumbs{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
 .sb-thumb{ position:relative; width:60px; height:60px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--separator); }
 .sb-thumb img{ width:100%; height:100%; object-fit:cover; }
+.sb-thumb-video video{ width:100%; height:100%; object-fit:cover; }
+.sb-thumb-video .sb-thumb-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:20px; height:20px; border-radius:50%; background:rgba(0,0,0,0.55); color:#fff;
+  font-size:9px; display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
 .sb-thumb button{
   position:absolute; top:2px; right:2px; width:16px; height:16px; border-radius:50%;
   background:rgba(0,0,0,0.55); color:#fff; border:none; font-size:10px; line-height:1;
@@ -656,7 +662,7 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-daycol-head.today{ color:var(--accent); border-color:var(--accent); }
 .sb-cal-daycol-body{
   position:relative; border-left:1px solid var(--separator); background:var(--bg-elevated);
-  transition:background 100ms ease;
+  transition:background 100ms ease; touch-action:none;
 }
 .sb-cal-daycol-body.drop-hover{ background:var(--accent-soft); }
 .sb-cal-quarter{
@@ -669,6 +675,10 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-cal-hourline span{
   position:absolute; top:-7px; left:6px; font-size:10px; font-weight:600; color:var(--text-tertiary); background:var(--bg-elevated); padding:0 4px;
   z-index:1;
+}
+.sb-cal-drag-ghost{
+  position:absolute; left:4px; right:4px; background:var(--accent); opacity:0.25;
+  border:1.5px dashed var(--accent); border-radius:8px; pointer-events:none; z-index:4;
 }
 .sb-cal-block{
   position:absolute; left:4px; right:4px; background:var(--accent-soft); border:1px solid var(--accent);
@@ -792,6 +802,13 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
 .sb-note-desc-view{ margin-top:6px; font-size:var(--fs-sm); color:var(--text-secondary); line-height:1.45; }
 .sb-note-gallery{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
 .sb-note-gallery img{ width:72px; height:72px; object-fit:cover; border-radius:var(--radius-sm); cursor:pointer; border:1px solid var(--separator); }
+.sb-video-thumb{ position:relative; width:72px; height:72px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--separator); cursor:pointer; }
+.sb-video-thumb video{ width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.sb-thumb-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.55); color:#fff;
+  font-size:10px; display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
 .sb-note-link{
   display:block; margin-top:8px; padding:0; font-size:var(--fs-sm); font-weight:600; color:var(--accent);
   text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
@@ -818,6 +835,16 @@ html[data-theme="dark"] .sb-review-dupe{ color:var(--warning); }
   position:fixed; inset:0; background:rgba(26,23,20,0.4); display:flex; align-items:center;
   justify-content:center; z-index:100; padding:20px; animation:sbFadeIn 0.15s ease;
 }
+.sb-lightbox-backdrop{
+  position:fixed; inset:0; background:rgba(10,8,6,0.92); display:flex; align-items:center;
+  justify-content:center; z-index:200; padding:32px; animation:sbFadeIn 0.15s ease;
+}
+.sb-lightbox-media{ max-width:100%; max-height:100%; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.sb-lightbox-close{
+  position:absolute; top:20px; right:24px; width:40px; height:40px; border-radius:50%;
+  border:none; background:rgba(255,255,255,0.12); color:#fff; font-size:18px; cursor:pointer;
+}
+.sb-lightbox-close:hover{ background:rgba(255,255,255,0.22); }
 .sb-modal{
   background:var(--bg-elevated); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
   width:100%; max-width:460px; max-height:86vh; overflow-y:auto; padding:24px;
@@ -1234,6 +1261,7 @@ function defaultState(){
     selectedTheme: null,
     view: 'home',
     pendingImages: [],
+    pendingVideos: [],
     linkMode: false,
     pendingParentId: null,
     editingFolderId: null,
@@ -1395,6 +1423,7 @@ function pullRemoteState(){
         }).catch(function(){});
       }
       remote.pendingImages = [];
+      remote.pendingVideos = [];
       remote.pendingReview = [];
       remote.pendingLinkPreview = null;
       remote.pendingVoiceNote = null;
@@ -1425,6 +1454,7 @@ function loadState(){
         if(!state.settings) state.settings = defaultState().settings;
         if(!state.digest) state.digest = { text:'', generatedAt:null, noteCount:0 };
         state.pendingImages = [];
+        state.pendingVideos = [];
         state.pendingReview = [];
         state.pendingLinkPreview = null;
         state.pendingVoiceNote = null;
@@ -1697,6 +1727,7 @@ function createNote(content, opts){
     content: content,
     image: opts.image || null,
     images: opts.images || (opts.image ? [opts.image] : []),
+    videos: opts.videos || [],
     linkPreview: opts.linkPreview || null,
     voiceNote: opts.voiceNote || null,
     time: formatTime(Date.now()),
@@ -1816,7 +1847,8 @@ function createCalendarBlock(opts){
     duration: opts.duration || 60,
     linkedFolderId: opts.linkedFolderId || null,
     linkedNoteId: opts.linkedNoteId || null,
-    recurrence: opts.recurrence || null
+    recurrence: opts.recurrence || null,
+    recurrenceUntil: opts.recurrenceUntil || null
   };
 }
 function blockOccursOnDate(b, date){
@@ -1824,6 +1856,7 @@ function blockOccursOnDate(b, date){
   if(b.date === date) return true;
   if(!b.recurrence) return false;
   if(date < b.date) return false;
+  if(b.recurrenceUntil && date > b.recurrenceUntil) return false;
   var start = isoToDate(b.date), target = isoToDate(date);
   if(b.recurrence === 'daily') return true;
   if(b.recurrence === 'weekdays'){
@@ -3424,13 +3457,20 @@ function renderCaptureBox(){
     });
     html += '</div>';
   }
+  if(state.pendingVideos.length){
+    html += '<div class="sb-thumbs">';
+    state.pendingVideos.forEach(function(vid, i){
+      html += '<div class="sb-thumb sb-thumb-video"><video src="' + vid.dataUrl + '" muted></video><span class="sb-thumb-play">▶</span><button data-remove-video="' + i + '">✕</button></div>';
+    });
+    html += '</div>';
+  }
   if(state.pendingVoiceNote){
     html += '<div class="sb-voice-memo"><span class="vm-ico">' + micIconSvg(14) + '</span><audio controls src="' + escapeHtml(state.pendingVoiceNote.dataUrl) + '"></audio><button data-remove-voice="1" title="Remove voice note">✕</button></div>';
   }
 
   html += '<div class="sb-capture-row">';
   html += '<button class="sb-icon-btn sb-capture-plus" id="btnCapturePlus" title="Add link or image">+</button>';
-  html += '<input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;">';
+  html += '<input type="file" id="imageFileInput" accept="image/*,video/*" multiple style="display:none;">';
   html += '<input type="file" id="audioFileInput" accept="audio/mp4,audio/x-m4a,audio/aac,audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/flac,.m4a,.mp3,.wav,.aac,.caf" style="display:none;">';
   html += '<span class="sb-spacer"></span>';
   html += '<button class="sb-icon-btn sb-capture-voice' + (captureDraft.voiceActive ? ' recording' : '') + '" id="chipVoice" title="' + (captureDraft.voiceActive ? 'Listening… tap to stop' : 'Voice note') + '">' + micIconSvg(18) + '</button>';
@@ -3511,11 +3551,19 @@ function wireCaptureEvents(){
 
     var remaining = files.length;
     files.forEach(function(file){
+      var isVideo = file.type.indexOf('video') === 0;
+      if(isVideo && file.size > 8*1024*1024){
+        showToast('Heads up: "' + file.name + '" is large (' + Math.round(file.size/1024/1024) + 'MB) — big videos can fill up local storage.');
+      }
       var reader = new FileReader();
       reader.onload = function(){
         var dataUrl = reader.result;
         var base64 = dataUrl.split(',')[1];
-        state.pendingImages.push({ dataUrl: dataUrl, mediaType: file.type, base64: base64 });
+        if(isVideo){
+          state.pendingVideos.push({ dataUrl: dataUrl, mediaType: file.type, base64: base64 });
+        } else {
+          state.pendingImages.push({ dataUrl: dataUrl, mediaType: file.type, base64: base64 });
+        }
         remaining--;
         if(remaining === 0) renderMain();
       };
@@ -3525,6 +3573,12 @@ function wireCaptureEvents(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-remove-image]'), function(btn){
     btn.addEventListener('click', function(){
       state.pendingImages.splice(Number(btn.getAttribute('data-remove-image')), 1);
+      renderMain();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-remove-video]'), function(btn){
+    btn.addEventListener('click', function(){
+      state.pendingVideos.splice(Number(btn.getAttribute('data-remove-video')), 1);
       renderMain();
     });
   });
@@ -3636,8 +3690,8 @@ function showCaptureError(msg){
 function handleFileClick(){
   var text = captureDraft.text.trim();
   var linkUrl = captureDraft.linkMode ? captureDraft.linkUrl.trim() : '';
-  if(!text && !linkUrl && state.pendingImages.length === 0 && !state.pendingVoiceNote){
-    showCaptureError('Write something, add a link, attach an image, or record a voice note first.');
+  if(!text && !linkUrl && state.pendingImages.length === 0 && state.pendingVideos.length === 0 && !state.pendingVoiceNote){
+    showCaptureError('Write something, add a link, attach a photo/video, or record a voice note first.');
     return;
   }
   var fullText = text;
@@ -3645,7 +3699,7 @@ function handleFileClick(){
     var normalized = /^https?:\/\//i.test(linkUrl) ? linkUrl : 'https://' + linkUrl;
     fullText = (fullText ? fullText + '\n' : '') + 'Link: ' + normalized;
   }
-  if(!fullText) fullText = state.pendingLinkPreview ? ('Link: ' + state.pendingLinkPreview.url) : (state.pendingVoiceNote ? 'Voice memo' : 'Untitled note');
+  if(!fullText) fullText = state.pendingLinkPreview ? ('Link: ' + state.pendingLinkPreview.url) : (state.pendingVoiceNote ? 'Voice memo' : (state.pendingVideos.length ? 'Video' : (state.pendingImages.length ? 'Photo' : 'Untitled note')));
 
   var btn = document.getElementById('btnFile');
   if(btn){ btn.disabled = true; btn.textContent = 'Filing…'; }
@@ -3659,6 +3713,7 @@ function handleFileClick(){
         note: createNote(item.text, {
           image: idx === 0 && state.pendingImages[0] ? state.pendingImages[0].dataUrl : null,
           images: idx === 0 ? state.pendingImages.map(function(i){ return i.dataUrl; }) : [],
+          videos: idx === 0 ? state.pendingVideos.map(function(v){ return v.dataUrl; }) : [],
           linkPreview: idx === 0 ? state.pendingLinkPreview : null,
           voiceNote: idx === 0 ? state.pendingVoiceNote : null,
           description: item.description || '',
@@ -3687,6 +3742,7 @@ function handleFileClick(){
 function resetCaptureDraft(){
   captureDraft = { text:'', linkMode:false, linkUrl:'', voiceActive:false };
   state.pendingImages = [];
+  state.pendingVideos = [];
   state.pendingLinkPreview = null;
   state.pendingVoiceNote = null;
 }
@@ -4106,17 +4162,19 @@ function renderNoteCard(note, folder, opts){
   html += renderNoteDescBlock(note);
 
   if(opts.expanded){
-    if(note.images && note.images.length){
+    if((note.images && note.images.length) || (note.videos && note.videos.length)){
       html += '<div class="sb-note-gallery">';
-      note.images.forEach(function(img){ html += '<img src="' + img + '">'; });
+      (note.images||[]).forEach(function(img){ html += '<img src="' + img + '">'; });
+      (note.videos||[]).forEach(function(vid){ html += '<div class="sb-video-thumb"><video src="' + vid + '" muted></video><span class="sb-thumb-play">▶</span></div>'; });
       html += '</div>';
     }
     html += renderNoteLinkChip(note);
     html += renderNoteVoiceChip(note);
   } else {
-    if(note.images && note.images.length){
+    if((note.images && note.images.length) || (note.videos && note.videos.length)){
       html += '<div class="sb-note-gallery">';
-      note.images.slice(0,4).forEach(function(img){ html += '<img src="' + img + '">'; });
+      (note.images||[]).slice(0,4).forEach(function(img){ html += '<img src="' + img + '">'; });
+      (note.videos||[]).slice(0,4).forEach(function(vid){ html += '<div class="sb-video-thumb"><video src="' + vid + '" muted></video><span class="sb-thumb-play">▶</span></div>'; });
       html += '</div>';
     }
     html += renderNoteLinkChip(note);
@@ -4801,18 +4859,24 @@ function renderCalendarDayColumn(date, wide){
   return html;
 }
 
-function openBlockModal(date, startMinutes, existingBlock){
+function openBlockModal(date, startMinutes, existingBlock, presetDuration){
   var isEdit = !!existingBlock;
+  var initialDuration = isEdit ? existingBlock.duration : (presetDuration || 60);
   var el = openModal(
     '<h2>' + (isEdit ? 'Edit block' : 'New block') + '</h2>' +
     '<div class="sb-field"><label>Title</label><input type="text" id="newBlockTitle" placeholder="What are you doing?" value="' + (isEdit ? escapeHtml(existingBlock.title) : '') + '"></div>' +
-    '<div class="sb-field"><label>Time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + ' – <span id="newBlockEndTime">' + minutesToLabel(startMinutes + (isEdit ? existingBlock.duration : 60)) + '</span></div></div>' +
+    '<div class="sb-field"><label>Time</label><div style="font-size:var(--fs-sm);color:var(--text-secondary);">' + minutesToLabel(startMinutes) + ' – <span id="newBlockEndTime">' + minutesToLabel(startMinutes + initialDuration) + '</span></div></div>' +
     '<div class="sb-field"><label>Duration</label><select id="newBlockDuration" class="sb-select" style="width:100%;">' +
-      [15,30,45,60,90,120].map(function(v){
-        var label = v < 60 ? (v + ' minutes') : (v === 60 ? '1 hour' : (v/60) + ' hours');
-        var sel = (isEdit ? existingBlock.duration : 60) === v ? ' selected' : '';
-        return '<option value="' + v + '"' + sel + '>' + label + '</option>';
-      }).join('') +
+      (function(){
+        var opts = [15,30,45,60,90,120];
+        if(opts.indexOf(initialDuration) === -1) opts.push(initialDuration);
+        opts.sort(function(a,b){ return a-b; });
+        return opts.map(function(v){
+          var label = v < 60 ? (v + ' minutes') : (v === 60 ? '1 hour' : (v % 60 === 0 ? (v/60) + ' hours' : Math.floor(v/60) + 'h ' + (v%60) + 'm'));
+          var sel = initialDuration === v ? ' selected' : '';
+          return '<option value="' + v + '"' + sel + '>' + label + '</option>';
+        }).join('');
+      })() +
     '</select></div>' +
     '<div class="sb-field"><label>Repeat</label><select id="newBlockRepeat" class="sb-select" style="width:100%;">' +
       ['', 'daily', 'weekdays', 'weekly', 'monthly'].map(function(v){
@@ -4821,6 +4885,10 @@ function openBlockModal(date, startMinutes, existingBlock){
         return '<option value="' + v + '"' + sel + '>' + labels[v] + '</option>';
       }).join('') +
     '</select></div>' +
+    '<div class="sb-field" id="newBlockUntilField" style="display:' + ((isEdit && existingBlock.recurrence) ? 'block' : 'none') + ';">' +
+      '<label>Until</label><input type="date" id="newBlockUntil" class="sb-select" style="width:100%;" value="' + (isEdit && existingBlock.recurrenceUntil ? existingBlock.recurrenceUntil : '') + '">' +
+      '<div style="font-size:9px;color:var(--text-tertiary);margin-top:4px;">Leave blank to repeat forever</div>' +
+    '</div>' +
     '<div class="sb-modal-foot">' +
       (isEdit ? '<button class="sb-btn-text" id="newBlockDelete" style="color:var(--danger);margin-right:auto;">Delete</button>' : '') +
       '<button class="sb-btn-text" id="newBlockCancel">Cancel</button>' +
@@ -4834,18 +4902,25 @@ function openBlockModal(date, startMinutes, existingBlock){
   durationSelect.addEventListener('change', function(){
     endTimeSpan.textContent = minutesToLabel(startMinutes + parseInt(durationSelect.value, 10));
   });
+  var repeatSelect = el.querySelector('#newBlockRepeat');
+  var untilField = el.querySelector('#newBlockUntilField');
+  repeatSelect.addEventListener('change', function(){
+    untilField.style.display = repeatSelect.value ? 'block' : 'none';
+  });
   el.querySelector('#newBlockCancel').addEventListener('click', closeModal);
   el.querySelector('#newBlockSave').addEventListener('click', function(){
     var title = titleInput.value.trim();
     if(!title) return;
     var duration = parseInt(el.querySelector('#newBlockDuration').value, 10);
     var recurrence = el.querySelector('#newBlockRepeat').value || null;
+    var recurrenceUntil = recurrence ? (el.querySelector('#newBlockUntil').value || null) : null;
     if(isEdit){
       existingBlock.title = title;
       existingBlock.duration = duration;
       existingBlock.recurrence = recurrence;
+      existingBlock.recurrenceUntil = recurrenceUntil;
     } else {
-      state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration, recurrence:recurrence }));
+      state.calendarBlocks.push(createCalendarBlock({ title:title, date:date, startMinutes:startMinutes, duration:duration, recurrence:recurrence, recurrenceUntil:recurrenceUntil }));
     }
     saveState();
     closeModal();
@@ -4997,15 +5072,46 @@ function wireCalendarViewEvents(){
     });
   });
 
-  // --- Click/tap an empty slot to create a custom block ---
+  // --- Drag from-to on an empty slot to create a custom block (click = default 1h) ---
   Array.prototype.forEach.call(document.querySelectorAll('.sb-cal-daycol-body'), function(colBody){
     var date = colBody.getAttribute('data-cal-date-body');
-    colBody.addEventListener('click', function(e){
+    var QUARTER = CAL_HOUR_HEIGHT/4;
+    colBody.addEventListener('pointerdown', function(e){
       if(e.target.closest('.sb-cal-block')) return;
+      e.preventDefault();
       var rect = colBody.getBoundingClientRect();
-      var y = e.clientY - rect.top;
-      var minutes = snapMinutes(CAL_HOUR_START*60 + (y / CAL_MIN_PX));
-      openBlockModal(date, minutes);
+      var startYRel = e.clientY - rect.top;
+      var moved = false;
+      var ghost = document.createElement('div');
+      ghost.className = 'sb-cal-drag-ghost';
+      colBody.appendChild(ghost);
+
+      function snap(y){ return Math.round(y / QUARTER) * QUARTER; }
+      function updateGhost(y1, y2){
+        ghost.style.top = Math.min(y1,y2) + 'px';
+        ghost.style.height = Math.max(QUARTER, Math.abs(y2-y1)) + 'px';
+      }
+      updateGhost(snap(startYRel), snap(startYRel) + QUARTER);
+
+      function onMove(e2){
+        var curYRel = e2.clientY - rect.top;
+        if(Math.abs(curYRel - startYRel) > 5) moved = true;
+        updateGhost(snap(startYRel), snap(curYRel));
+      }
+      function onUp(e2){
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        ghost.remove();
+        var endYRel = e2.clientY - rect.top;
+        var snappedStart = snap(Math.min(startYRel, endYRel));
+        var snappedEnd = snap(Math.max(startYRel, endYRel));
+        var minutes = CAL_HOUR_START*60 + Math.round(snappedStart / CAL_MIN_PX);
+        var durationPx = moved ? Math.max(QUARTER, snappedEnd - snappedStart) : CAL_HOUR_HEIGHT;
+        var duration = Math.max(15, Math.round(durationPx / CAL_MIN_PX));
+        openBlockModal(date, minutes, null, duration);
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     });
   });
 
@@ -5522,7 +5628,14 @@ function wireNoteCardEvents(){
     });
 
     Array.prototype.forEach.call(card.querySelectorAll('.sb-note-gallery img'), function(img){
-      img.addEventListener('click', function(e){ e.stopPropagation(); window.open(img.src, '_blank'); });
+      img.addEventListener('click', function(e){ e.stopPropagation(); openLightbox(img.src, 'image'); });
+    });
+    Array.prototype.forEach.call(card.querySelectorAll('.sb-video-thumb'), function(thumb){
+      thumb.addEventListener('click', function(e){
+        e.stopPropagation();
+        var v = thumb.querySelector('video');
+        openLightbox(v.src, 'video');
+      });
     });
   });
 }
@@ -5646,6 +5759,32 @@ function closeModal(){
   var el = document.getElementById('activeModalBackdrop');
   if(el) el.remove();
 }
+
+function openLightbox(src, type){
+  closeLightbox();
+  var root = document.getElementById('modalRoot');
+  var backdrop = document.createElement('div');
+  backdrop.className = 'sb-lightbox-backdrop';
+  backdrop.id = 'activeLightbox';
+  var mediaHtml = type === 'video'
+    ? '<video src="' + src + '" controls autoplay class="sb-lightbox-media"></video>'
+    : '<img src="' + src + '" class="sb-lightbox-media">';
+  backdrop.innerHTML = '<button class="sb-lightbox-close" id="btnLightboxClose">✕</button>' + mediaHtml;
+  backdrop.addEventListener('mousedown', function(e){ if(e.target === backdrop) closeLightbox(); });
+  root.appendChild(backdrop);
+  document.getElementById('btnLightboxClose').addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', lightboxEscHandler);
+}
+function closeLightbox(){
+  var el = document.getElementById('activeLightbox');
+  if(el){
+    var v = el.querySelector('video');
+    if(v) v.pause();
+    el.remove();
+  }
+  document.removeEventListener('keydown', lightboxEscHandler);
+}
+function lightboxEscHandler(e){ if(e.key === 'Escape') closeLightbox(); }
 
 function openConfirmModal(title, body, onConfirm){
   var el = openModal(
