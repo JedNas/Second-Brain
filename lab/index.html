@@ -1342,7 +1342,7 @@ function remoteSyncSet(dataObj){
   var key = state.settings.syncApiKey, bin = state.settings.syncBinId;
   return fetch('https://api.jsonbin.io/v3/b/' + encodeURIComponent(bin), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': key, 'X-Bin-Versioning': 'true' },
     body: JSON.stringify(dataObj)
   }).then(function(res){
     if(!res.ok) return jsonBinErrorText(res).then(function(msg){ throw new Error('Sync write failed: ' + msg); });
@@ -6700,6 +6700,16 @@ function exportJson(){
   showToast('JSON backup downloaded.');
 }
 
+function autoBackupIfDue(){
+  var last = state.settings.lastExportAt;
+  var sevenDays = 7 * 24 * 60 * 60 * 1000;
+  if(last && (Date.now() - last) < sevenDays) return;
+  if(!getAllNotesCached().length) return;
+  var data = { folders: state.folders, trash: state.trash, digest: state.digest, exportedAt: Date.now() };
+  downloadFile('second-brain-auto-backup-' + todayISO() + '.json', JSON.stringify(data, null, 2), 'application/json');
+  showToast('Automatic weekly backup saved to your downloads.');
+}
+
 function exportMarkdown(){
   var lines = ['# Second Brain', ''];
   function walk(folders, depth){
@@ -6977,11 +6987,7 @@ function init(){
       openReviewModal();
     }
 
-    if(getAllNotesCached().length > 20 && !state.settings.lastExportAt){
-      setTimeout(function(){
-        showToast('You have a lot of notes and no backup yet — consider exporting from Settings.');
-      }, 1500);
-    }
+    setTimeout(autoBackupIfDue, 2000);
   });
 }
 
